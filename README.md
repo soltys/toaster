@@ -32,6 +32,10 @@ toaster -t "Build done" -b "All green" -i logo.png -s done.wav --wait
 
 Values can also be written as `--title=value`.
 
+Without `--title` the toast shows only the body. With neither `--title` nor
+`--body`, no toast is shown at all: toaster just plays `--sound` and returns
+when it ends (`toaster -s done`). `--image` and `--wait` need a toast.
+
 By default toaster shows the notification and returns immediately. When a
 sound is given it returns as soon as the sound has finished playing; the
 sound replaces the default Windows notification sound.

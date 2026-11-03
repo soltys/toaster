@@ -121,6 +121,16 @@ ExitCode notify(const toaster::cli::Options& requested) {
         content.silent = true; // our sound replaces the Windows notification sound
     }
 
+    if (options.title.empty() && options.body.empty()) {
+        // Sound-only mode: no toast, play the sound to the end and exit.
+        std::wstring error;
+        if (!toaster::sound::play(*sound, /*async=*/false, error)) {
+            toaster::console::err(L"toaster: could not play '" + options.sound + L"': " + error + L"\n");
+            return ExitCode::Failure;
+        }
+        return ExitCode::Ok;
+    }
+
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
 
     auto notification = toaster::toast::Notification::show(content, options.wait);
