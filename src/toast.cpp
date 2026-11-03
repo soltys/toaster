@@ -27,8 +27,9 @@ void appendEscaped(std::wstring& xml, std::wstring_view text) {
 }
 
 std::wstring fileUri(const std::filesystem::path& path) {
-    wchar_t buffer[L_MAX_URL_LENGTH];
-    DWORD size = L_MAX_URL_LENGTH;
+    constexpr DWORD kMaxUrlLength = 2084; // INTERNET_MAX_URL_LENGTH, avoids pulling in wininet.h
+    wchar_t buffer[kMaxUrlLength];
+    DWORD size = kMaxUrlLength;
     if (SUCCEEDED(::UrlCreateFromPathW(path.c_str(), buffer, &size, 0))) {
         return std::wstring(buffer, size);
     }
