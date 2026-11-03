@@ -143,9 +143,8 @@ toaster -t "Build done" -s done -i logo
 ```
 
 If a file with that name exists in the current directory it is used instead.
-Windows only shows toast images from files and plays MP3 (through MCI) only
-from files, so embedded images and `.mp3` sounds are unpacked once to
-`%LOCALAPPDATA%\toaster\cache`. Embedded `.wav` files play straight from the `.exe`.
+Windows only shows toast images from files, so embedded images are unpacked once to
+`%LOCALAPPDATA%\toaster\cache`. Embedded sounds play straight from the `.exe`.
 
 ### Sound packs
 

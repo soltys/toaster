@@ -54,6 +54,7 @@ add_executable(toaster
     src/toast.cpp
     src/sound.cpp
     src/packs.cpp
+    src/mp3.cpp
     src/skill.cpp
 )
 
@@ -74,6 +75,7 @@ set_source_files_properties("${TOASTER_SKILL_RC}" PROPERTIES OBJECT_DEPENDS "${T
 target_include_directories(toaster PRIVATE
     src
     ${CMAKE_CURRENT_BINARY_DIR}/generated
+    third_party/dr_libs   # dr_mp3.h: header-only MP3 decoder (public domain / MIT-0)
 )
 
 target_compile_features(toaster PRIVATE cxx_std_20)

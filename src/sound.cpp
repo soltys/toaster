@@ -3,112 +3,73 @@
 #include "sound.h"
 
 #include "handle.h"
+#include "mp3.h"
 
 #include <mmsystem.h>
-#include <objbase.h>
-
-#include <future>
-#include <stop_token>
-#include <thread>
 
 namespace toaster::sound {
 namespace {
 
-// .wav files and embedded .wav resources go through PlaySound, which is the
-// lightest way to play PCM audio.
+// Everything plays through PlaySound, the lightest way to play PCM audio.
+// MP3 is first decoded (dr_mp3) into an in-memory .wav, which is kept alive
+// here because PlaySound(SND_MEMORY | SND_ASYNC) reads it while playing.
 class WavPlayback final : public Playback {
 public:
-    explicit WavPlayback(bool async) : async_(async) {}
+    explicit WavPlayback(bool async, std::vector<std::byte> buffer = {})
+        : async_(async), buffer_(std::move(buffer)) {}
     ~WavPlayback() override {
         if (async_) {
-            ::PlaySoundW(nullptr, nullptr, 0); // stop
+            ::PlaySoundW(nullptr, nullptr, 0); // stop before buffer_ is freed
         }
     }
+
+    [[nodiscard]] LPCWSTR memory() const { return reinterpret_cast<LPCWSTR>(buffer_.data()); }
 
 private:
     bool async_;
+    std::vector<std::byte> buffer_;
 };
 
-std::wstring mciError(MCIERROR code) {
-    wchar_t text[256] = {};
-    if (!::mciGetErrorStringW(code, text, static_cast<UINT>(std::size(text)))) {
-        return L"MCI error " + std::to_wstring(code);
+std::optional<std::vector<std::byte>> readFile(const std::filesystem::path& path) {
+    UniqueHandle file = makeFileHandle(::CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                                     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+    LARGE_INTEGER size{};
+    if (!file || !::GetFileSizeEx(file.get(), &size) || size.QuadPart > 0x7FFFFFFF) {
+        return std::nullopt;
     }
-    return text;
+    std::vector<std::byte> data(static_cast<std::size_t>(size.QuadPart));
+    DWORD read = 0;
+    if (!::ReadFile(file.get(), data.data(), static_cast<DWORD>(data.size()), &read, nullptr) ||
+        read != data.size()) {
+        return std::nullopt;
+    }
+    return data;
 }
 
-// MP3 goes through MCI (winmm), which decodes it with the codecs that ship
-// with Windows, so no extra library is needed.
-//
-// MCI's mpegvideo driver is built on DirectShow and fails to load in a
-// multithreaded COM apartment, which is what the toast code uses. So every
-// MCI call runs on a dedicated single-threaded-apartment thread.
-class Mp3Playback final : public Playback {
-public:
-    ~Mp3Playback() override {
-        worker_.request_stop(); // std::jthread joins on destruction
+std::span<const std::byte> loadResource(const std::wstring& name, LPCWSTR type) {
+    HMODULE module = ::GetModuleHandleW(nullptr);
+    HRSRC info = ::FindResourceW(module, name.c_str(), type);
+    HGLOBAL loaded = info ? ::LoadResource(module, info) : nullptr; // owned by the module
+    const void* data = loaded ? ::LockResource(loaded) : nullptr;
+    if (!data) {
+        return {};
     }
+    return {static_cast<const std::byte*>(data), ::SizeofResource(module, info)};
+}
 
-    static std::unique_ptr<Playback> start(const std::filesystem::path& path, bool async, std::wstring& error) {
-        auto playback = std::unique_ptr<Mp3Playback>(new Mp3Playback());
-
-        std::promise<std::wstring> started;
-        auto startResult = started.get_future();
-        playback->worker_ = std::jthread(
-            [path, started = std::move(started)](std::stop_token stop) mutable { run(path, started, stop); });
-
-        error = startResult.get();
-        if (!error.empty()) {
-            return nullptr;
-        }
-        if (!async) {
-            playback->worker_.join(); // returns when the sound has finished
-        }
-        return playback;
+std::unique_ptr<Playback> playMp3(std::span<const std::byte> mp3, DWORD mode, std::wstring& error) {
+    auto wav = mp3::decodeToWav(mp3);
+    if (wav.empty()) {
+        error = L"could not decode the MP3 data";
+        return nullptr;
     }
-
-private:
-    static constexpr const wchar_t* kAlias = L"toaster_sound";
-
-    Mp3Playback() = default;
-
-    static MCIERROR send(const std::wstring& command, wchar_t* result = nullptr, UINT resultSize = 0) {
-        return ::mciSendStringW(command.c_str(), result, resultSize, nullptr);
+    auto playback = std::make_unique<WavPlayback>((mode & SND_ASYNC) != 0, std::move(wav));
+    if (!::PlaySoundW(playback->memory(), nullptr, SND_MEMORY | mode)) {
+        error = L"PlaySound failed";
+        return nullptr;
     }
-
-    static void run(const std::filesystem::path& path, std::promise<std::wstring>& started, std::stop_token stop) {
-        const HRESULT com = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-
-        const std::wstring alias(kAlias);
-        if (const MCIERROR code = send(L"open \"" + path.wstring() + L"\" type mpegvideo alias " + alias)) {
-            started.set_value(mciError(code));
-        } else {
-            if (const MCIERROR playCode = send(L"play " + alias)) {
-                started.set_value(mciError(playCode));
-            } else {
-                started.set_value(L"");
-                wchar_t mode[32] = {};
-                while (!stop.stop_requested()) {
-                    if (send(L"status " + alias + L" mode", mode, static_cast<UINT>(std::size(mode))) != 0) {
-                        break;
-                    }
-                    const std::wstring_view state(mode);
-                    if (state != L"playing" && state != L"seeking" && state != L"not ready") {
-                        break; // "stopped" once the end is reached
-                    }
-                    ::Sleep(20);
-                }
-            }
-            send(L"close " + alias);
-        }
-
-        if (SUCCEEDED(com)) {
-            ::CoUninitialize();
-        }
-    }
-
-    std::jthread worker_;
-};
+    return playback;
+}
 
 bool hasExtension(const std::filesystem::path& path, std::wstring_view ext) {
     const std::wstring actual = path.extension().wstring();
@@ -151,7 +112,15 @@ std::optional<Format> detectFormat(const std::filesystem::path& path) {
 std::unique_ptr<Playback> play(const Source& source, bool async, std::wstring& error) {
     const DWORD mode = SND_NODEFAULT | (async ? SND_ASYNC : SND_SYNC);
 
-    if (const auto* embedded = std::get_if<EmbeddedWav>(&source)) {
+    if (const auto* embedded = std::get_if<EmbeddedSound>(&source)) {
+        if (embedded->format == Format::Mp3) {
+            const auto data = loadResource(embedded->resourceName, RT_RCDATA);
+            if (data.empty()) {
+                error = L"embedded sound not found";
+                return nullptr;
+            }
+            return playMp3(data, mode, error);
+        }
         if (!::PlaySoundW(embedded->resourceName.c_str(), ::GetModuleHandleW(nullptr), SND_RESOURCE | mode)) {
             error = L"PlaySound failed";
             return nullptr;
@@ -161,7 +130,12 @@ std::unique_ptr<Playback> play(const Source& source, bool async, std::wstring& e
 
     const auto& file = std::get<FileSound>(source);
     if (file.format == Format::Mp3) {
-        return Mp3Playback::start(file.path, async, error);
+        const auto data = readFile(file.path);
+        if (!data) {
+            error = L"could not read the file";
+            return nullptr;
+        }
+        return playMp3(*data, mode, error);
     }
     if (!::PlaySoundW(file.path.c_str(), nullptr, SND_FILENAME | mode)) {
         error = L"PlaySound failed";

@@ -137,14 +137,6 @@ std::optional<SoundInfo> findSound(std::wstring_view name) {
                      sound->extension == L".mp3" ? SoundFormat::Mp3 : SoundFormat::Wav};
 }
 
-std::optional<std::filesystem::path> extractSound(std::wstring_view name) {
-    const EmbeddedAsset* sound = findAsset(kSounds, name);
-    if (!sound) {
-        return std::nullopt;
-    }
-    return extractToCache(*sound, L"SND_");
-}
-
 std::optional<std::filesystem::path> extractImage(std::wstring_view name) {
     const EmbeddedAsset* image = findAsset(kImages, name);
     if (!image) {

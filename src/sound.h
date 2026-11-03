@@ -15,12 +15,14 @@ struct FileSound {
     Format format;
 };
 
-// A .wav compiled into the executable (resource type WAVE).
-struct EmbeddedWav {
+// A sound compiled into the executable: a .wav (resource type WAVE) or an
+// .mp3 (resource type RCDATA).
+struct EmbeddedSound {
     std::wstring resourceName; // e.g. L"SND_DONE"
+    Format format;
 };
 
-using Source = std::variant<FileSound, EmbeddedWav>;
+using Source = std::variant<FileSound, EmbeddedSound>;
 
 // Detects the format from the file header (falls back to the extension for
 // MP3 files without an ID3 tag). Returns nullopt for anything else.

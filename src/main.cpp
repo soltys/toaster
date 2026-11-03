@@ -48,13 +48,9 @@ toaster::sound::Source resolveSound(const std::wstring& value) {
         return sound::FileSound{value, *format};
     }
     if (const auto embeddedSound = embedded::findSound(value)) {
-        if (embeddedSound->format == embedded::SoundFormat::Wav) {
-            return sound::EmbeddedWav{embeddedSound->resourceName};
-        }
-        if (auto path = embedded::extractSound(value)) {
-            return sound::FileSound{*path, sound::Format::Mp3};
-        }
-        throw InputError{L"could not unpack embedded sound '" + value + L"' to the cache folder"};
+        const auto format =
+            embeddedSound->format == embedded::SoundFormat::Mp3 ? sound::Format::Mp3 : sound::Format::Wav;
+        return sound::EmbeddedSound{embeddedSound->resourceName, format};
     }
     throw InputError{L"sound not found: '" + value + L"' (not a file and not an embedded sound)"};
 }
