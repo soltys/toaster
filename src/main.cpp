@@ -37,14 +37,22 @@ std::filesystem::path resolveImage(const std::wstring& value) {
 }
 
 toaster::sound::Source resolveSound(const std::wstring& value) {
+    using namespace toaster;
     if (isRegularFile(value)) {
-        if (!toaster::sound::looksLikeWav(value)) {
-            throw InputError{L"not a .wav file: '" + value + L"'"};
+        const auto format = sound::detectFormat(value);
+        if (!format) {
+            throw InputError{L"not a .wav or .mp3 file: '" + value + L"'"};
         }
-        return toaster::sound::FileSound{value};
+        return sound::FileSound{value, *format};
     }
-    if (toaster::embedded::hasSound(value)) {
-        return toaster::sound::EmbeddedSound{toaster::embedded::soundResourceName(value)};
+    if (const auto embeddedSound = embedded::findSound(value)) {
+        if (embeddedSound->format == embedded::SoundFormat::Wav) {
+            return sound::EmbeddedWav{embeddedSound->resourceName};
+        }
+        if (auto path = embedded::extractSound(value)) {
+            return sound::FileSound{*path, sound::Format::Mp3};
+        }
+        throw InputError{L"could not unpack embedded sound '" + value + L"' to the cache folder"};
     }
     throw InputError{L"sound not found: '" + value + L"' (not a file and not an embedded sound)"};
 }
@@ -80,18 +88,21 @@ ExitCode notify(const toaster::cli::Options& options) {
     std::optional<toaster::sound::Source> sound;
     if (!options.sound.empty()) {
         sound = resolveSound(options.sound);
-        content.silent = true; // our .wav replaces the Windows notification sound
+        content.silent = true; // our sound replaces the Windows notification sound
     }
 
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
 
     auto notification = toaster::toast::Notification::show(content, options.wait);
 
+    std::unique_ptr<toaster::sound::Playback> playback; // stops the sound when destroyed
     if (sound) {
         // Fire-and-forget: play synchronously so the process lives exactly as
         // long as the sound. With --wait: play in the background while waiting.
-        if (!toaster::sound::play(*sound, /*async=*/options.wait)) {
-            toaster::console::err(L"toaster: warning: could not play '" + options.sound + L"'\n");
+        std::wstring error;
+        playback = toaster::sound::play(*sound, /*async=*/options.wait, error);
+        if (!playback) {
+            toaster::console::err(L"toaster: warning: could not play '" + options.sound + L"': " + error + L"\n");
         }
     }
 

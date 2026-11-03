@@ -1,7 +1,7 @@
 # toaster
 
 A small, fast command-line tool for Windows 11 that shows toast notifications
-and plays `.wav` files. It ships as a single self-contained `toaster.exe`:
+and plays `.wav` or `.mp3` files. It ships as a single self-contained `toaster.exe`:
 drop it anywhere on your `PATH`.
 
 Toasts are sent under the app ID `Soltys.Toaster`, which toaster registers in
@@ -20,7 +20,7 @@ toaster -t "Build done" -b "All green" -i logo.png -s done.wav --wait
 | `-b`  | `--body <text>`   | Toast body text                                           |
 | `-i`  | `--image <path\|name>` | Image file, or the name of an embedded image         |
 |       | `--image-style <style>` | `logo` (small, next to the text; default), `inline` or `hero` |
-| `-s`  | `--sound <path\|name>` | `.wav` file, or the name of an embedded sound        |
+| `-s`  | `--sound <path\|name>` | `.wav`/`.mp3` file, or the name of an embedded sound |
 | `-w`  | `--wait`          | Block until the toast is dismissed or clicked             |
 |       | `--timeout <sec>` | With `--wait`: give up after this many seconds            |
 |       | `--list-embedded` | List sounds and images compiled into the `.exe`           |
@@ -31,7 +31,7 @@ Values can also be written as `--title=value`.
 
 By default toaster shows the notification and returns immediately. When a
 sound is given it returns as soon as the sound has finished playing; the
-`.wav` replaces the default Windows notification sound.
+sound replaces the default Windows notification sound.
 
 With `--wait` it blocks until the toast is resolved. Windows moves an unclicked
 toast to Action Center after a few seconds, which also ends the wait.
@@ -77,7 +77,7 @@ the C/C++ runtime.
 
 ### Embedding sounds and images
 
-Every `.wav` file in `assets/sounds` and every image (`.png`, `.jpg`, `.jpeg`,
+Every `.wav` and `.mp3` file in `assets/sounds` and every image (`.png`, `.jpg`, `.jpeg`,
 `.gif`) in `assets/images` is compiled into the executable. Drop files into
 those folders and rebuild; CMake notices added or removed files on its own.
 
@@ -101,5 +101,6 @@ toaster -t "Build done" -s done -i logo
 ```
 
 If a file with that name exists in the current directory it is used instead.
-Windows only shows toast images from files, so embedded images are unpacked once
-to `%LOCALAPPDATA%\toaster\cache`.
+Windows only shows toast images from files and plays MP3 (through MCI) only
+from files, so embedded images and `.mp3` sounds are unpacked once to
+`%LOCALAPPDATA%\toaster\cache`. Embedded `.wav` files play straight from the `.exe`.

@@ -7,11 +7,19 @@
 
 namespace toaster::embedded {
 
-// True when a sound with this name was compiled into the executable.
-[[nodiscard]] bool hasSound(std::wstring_view name);
+enum class SoundFormat { Wav, Mp3 };
 
-// Resource name to pass to PlaySound(..., SND_RESOURCE), e.g. L"SND_DONE".
-[[nodiscard]] std::wstring soundResourceName(std::wstring_view name);
+struct SoundInfo {
+    std::wstring resourceName; // e.g. L"SND_DONE"
+    SoundFormat format;
+};
+
+// Looks up an embedded sound by name.
+[[nodiscard]] std::optional<SoundInfo> findSound(std::wstring_view name);
+
+// MCI can only play MP3 from a file, so an embedded MP3 is unpacked to the
+// cache folder (see extractImage) and that path is returned.
+[[nodiscard]] std::optional<std::filesystem::path> extractSound(std::wstring_view name);
 
 // Toasts can only show images from a file, so an embedded image is written to
 // %LOCALAPPDATA%\toaster\cache once and that path is returned. The file name

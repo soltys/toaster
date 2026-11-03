@@ -19,10 +19,11 @@ std::wstring normalize(std::wstring_view name) {
     return result;
 }
 
-const EmbeddedImage* findImage(std::wstring_view name) {
+template <std::size_t N>
+const EmbeddedAsset* findAsset(const std::array<EmbeddedAsset, N>& assets, std::wstring_view name) {
     const std::wstring wanted = normalize(name);
-    const auto it = std::ranges::find(kImages, std::wstring_view(wanted), &EmbeddedImage::name);
-    return it == kImages.end() ? nullptr : &*it;
+    const auto it = std::ranges::find(assets, std::wstring_view(wanted), &EmbeddedAsset::name);
+    return it == assets.end() ? nullptr : &*it;
 }
 
 std::span<const std::byte> loadResource(const std::wstring& name, LPCWSTR type) {
@@ -99,24 +100,9 @@ bool writeFileAtomically(const std::filesystem::path& target, std::span<const st
     return true;
 }
 
-} // namespace
-
-bool hasSound(std::wstring_view name) {
-    const std::wstring wanted = normalize(name);
-    return std::ranges::find(kSounds, std::wstring_view(wanted)) != kSounds.end();
-}
-
-std::wstring soundResourceName(std::wstring_view name) {
-    return L"SND_" + normalize(name);
-}
-
-std::optional<std::filesystem::path> extractImage(std::wstring_view name) {
-    const EmbeddedImage* image = findImage(name);
-    if (!image) {
-        return std::nullopt;
-    }
-
-    const auto data = loadResource(L"IMG_" + std::wstring(image->name), RT_RCDATA);
+// Writes an RCDATA resource to the cache folder once and returns its path.
+std::optional<std::filesystem::path> extractToCache(const EmbeddedAsset& asset, std::wstring_view prefix) {
+    const auto data = loadResource(std::wstring(prefix) + std::wstring(asset.name), RT_RCDATA);
     if (data.empty()) {
         return std::nullopt;
     }
@@ -128,7 +114,7 @@ std::optional<std::filesystem::path> extractImage(std::wstring_view name) {
 
     wchar_t hash[17];
     swprintf_s(hash, L"%016llx", static_cast<unsigned long long>(fnv1a(data)));
-    auto target = *dir / (std::wstring(image->name) + L"-" + hash + std::wstring(image->extension));
+    auto target = *dir / (std::wstring(asset.name) + L"-" + hash + std::wstring(asset.extension));
 
     std::error_code ec;
     if (std::filesystem::file_size(target, ec) == data.size() && !ec) {
@@ -140,15 +126,44 @@ std::optional<std::filesystem::path> extractImage(std::wstring_view name) {
     return target;
 }
 
+} // namespace
+
+std::optional<SoundInfo> findSound(std::wstring_view name) {
+    const EmbeddedAsset* sound = findAsset(kSounds, name);
+    if (!sound) {
+        return std::nullopt;
+    }
+    return SoundInfo{L"SND_" + std::wstring(sound->name),
+                     sound->extension == L".mp3" ? SoundFormat::Mp3 : SoundFormat::Wav};
+}
+
+std::optional<std::filesystem::path> extractSound(std::wstring_view name) {
+    const EmbeddedAsset* sound = findAsset(kSounds, name);
+    if (!sound) {
+        return std::nullopt;
+    }
+    return extractToCache(*sound, L"SND_");
+}
+
+std::optional<std::filesystem::path> extractImage(std::wstring_view name) {
+    const EmbeddedAsset* image = findAsset(kImages, name);
+    if (!image) {
+        return std::nullopt;
+    }
+    return extractToCache(*image, L"IMG_");
+}
+
 std::wstring describe() {
     std::wstring text = L"Embedded sounds:\n";
     if (kSounds.empty()) {
         text += L"  (none)\n";
     }
-    for (auto name : kSounds) {
+    for (const auto& sound : kSounds) {
         text += L"  ";
-        text += name;
-        text += L'\n';
+        text += sound.name;
+        text += L"  (";
+        text += sound.extension.substr(1);
+        text += L")\n";
     }
     text += L"Embedded images:\n";
     if (kImages.empty()) {

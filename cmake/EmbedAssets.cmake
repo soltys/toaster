@@ -2,7 +2,7 @@
 # images into the executable.
 #
 #   toaster_embed_assets(<target>
-#       SOUNDS <file>...   # .wav files
+#       SOUNDS <file>...   # .wav / .mp3 files
 #       IMAGES <file>...)  # .png / .jpg / .jpeg / .gif files
 #
 # Each asset is addressed at runtime by its file name without extension,
@@ -74,16 +74,21 @@ function(toaster_embed_assets target)
             list(APPEND dependencies "${path}")
 
             if(kind STREQUAL "SOUNDS")
-                if(NOT ext STREQUAL ".wav")
-                    message(FATAL_ERROR "Embedded sounds must be .wav files: ${path}")
+                if(NOT ext MATCHES "^\\.(wav|mp3)$")
+                    message(FATAL_ERROR "Embedded sounds must be .wav or .mp3 files: ${path}")
                 endif()
                 if(name IN_LIST seen_sounds)
                     message(FATAL_ERROR "Two embedded sounds share the name '${name}'")
                 endif()
                 list(APPEND seen_sounds "${name}")
-                # Resource type WAVE lets PlaySound(SND_RESOURCE) play it directly.
-                string(APPEND rc_content "SND_${name} WAVE \"${rc_path}\"\n")
-                string(APPEND sound_entries "    L\"${name}\",\n")
+                if(ext STREQUAL ".wav")
+                    # Resource type WAVE lets PlaySound(SND_RESOURCE) play it directly.
+                    string(APPEND rc_content "SND_${name} WAVE \"${rc_path}\"\n")
+                else()
+                    # MP3 is played by MCI from a file, so it is unpacked to the cache.
+                    string(APPEND rc_content "SND_${name} RCDATA \"${rc_path}\"\n")
+                endif()
+                string(APPEND sound_entries "    EmbeddedAsset{L\"${name}\", L\"${ext}\"},\n")
             else()
                 if(NOT ext MATCHES "^\\.(png|jpg|jpeg|gif)$")
                     message(FATAL_ERROR "Embedded images must be .png, .jpg, .jpeg or .gif: ${path}")
@@ -93,7 +98,7 @@ function(toaster_embed_assets target)
                 endif()
                 list(APPEND seen_images "${name}")
                 string(APPEND rc_content "IMG_${name} RCDATA \"${rc_path}\"\n")
-                string(APPEND image_entries "    EmbeddedImage{L\"${name}\", L\"${ext}\"},\n")
+                string(APPEND image_entries "    EmbeddedAsset{L\"${name}\", L\"${ext}\"},\n")
             endif()
         endforeach()
     endforeach()
@@ -109,16 +114,17 @@ function(toaster_embed_assets target)
 
 namespace toaster::embedded {
 
-struct EmbeddedImage {
+struct EmbeddedAsset {
     std::wstring_view name;
     std::wstring_view extension; // including the dot, e.g. L\".png\"
 };
 
-// Resource names are \"SND_<name>\" (type WAVE) and \"IMG_<name>\" (type RCDATA).
-inline constexpr std::array<std::wstring_view, ${sound_count}> kSounds{
+// Resource names are \"SND_<name>\" (type WAVE for .wav, RCDATA for .mp3)
+// and \"IMG_<name>\" (type RCDATA).
+inline constexpr std::array<EmbeddedAsset, ${sound_count}> kSounds{
 ${sound_entries}};
 
-inline constexpr std::array<EmbeddedImage, ${image_count}> kImages{
+inline constexpr std::array<EmbeddedAsset, ${image_count}> kImages{
 ${image_entries}};
 
 } // namespace toaster::embedded
