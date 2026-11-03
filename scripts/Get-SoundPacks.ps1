@@ -236,7 +236,7 @@ if ($All) {
     $selected = $packs
 }
 else {
-    if (-not $Name) { $Name = @('peon', 'glados') }
+    if (-not $Name) { $Name = @('peon', 'glados', 'jan_pawel_2') }
     $selected = foreach ($n in $Name) {
         $entry = $packs | Where-Object { $_.name -eq $n } | Select-Object -First 1
         if (-not $entry) { Write-Error "Pack '$n' is not in the registry. Use -List to see the available packs." -ErrorAction Continue; $failed = $true; continue }
