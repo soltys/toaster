@@ -11,7 +11,11 @@
             "displayName": "MSVC x64 (Visual Studio 2026)",
             "generator": "Visual Studio 18 2026",
             "architecture": "x64",
-            "binaryDir": "${sourceDir}/build/${presetName}"
+            "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "TOASTER_SOUNDS_DIR": "c:/temp/toast_notification/sounds",
+        "TOASTER_IMAGES_DIR": "c:/temp/toast_notification/images"
+      }
         }
     ],
     "buildPresets": [
