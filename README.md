@@ -27,6 +27,9 @@ toaster -t "Build done" -b "All green" -i logo.png -s done.wav --wait
 |       | `--timeout <sec>` | With `--wait`: give up after this many seconds            |
 |       | `--list-embedded` | List sounds and images compiled into the `.exe`           |
 |       | `--list-packs`    | List embedded sound packs, their categories and sounds    |
+|       | `--install-skill` | Install the `toaster` AI agent skill (interactive wizard) |
+|       | `--skill-target <list>` | With `--install-skill`: `all` or `claude,codex,copilot,vscode,vs`, no questions |
+|       | `--print-skill`   | Print the embedded `SKILL.md`                             |
 | `-h`  | `--help`          | Show help                                                 |
 | `-v`  | `--version`       | Show version                                              |
 
@@ -69,6 +72,38 @@ toaster -t "Build failed" -b "See build.log" -i error.png -s fail.wav
 toaster -t "Ready" --wait
 if %ERRORLEVEL% EQU 3 echo Closed by the user
 ```
+
+## AI agent skill
+
+`toaster.exe` carries a ready-to-use agent skill (`skill/toaster/SKILL.md`,
+compiled into the `.exe`) that teaches AI coding tools to notify you with
+toaster when a long task finishes, fails or needs your input.
+
+```
+toaster --install-skill
+```
+
+The wizard lists the AI developer tools it finds on this computer, and you
+pick one or more by number (Enter installs into every tool found). Each tool
+gets the skill in its personal skills folder:
+
+| Tool | Folder |
+|------|--------|
+| Claude Code | `%USERPROFILE%\.claude\skills\toaster` |
+| OpenAI Codex | `%USERPROFILE%\.agents\skills\toaster` |
+| GitHub Copilot CLI / Copilot app | `%USERPROFILE%\.copilot\skills\toaster` |
+| Visual Studio Code (Copilot agent mode) | `%USERPROFILE%\.copilot\skills\toaster` |
+| Visual Studio (Copilot) | `%USERPROFILE%\.copilot\skills\toaster` |
+
+Running it again updates an older copy. In scripts, skip the questions:
+
+```
+toaster --install-skill --skill-target all
+toaster --install-skill --skill-target claude,codex
+```
+
+`toaster --print-skill` prints the embedded skill, for example to commit it to
+a repository's `.github/skills/toaster/SKILL.md` or `.claude/skills/toaster/SKILL.md`.
 
 ## Building
 

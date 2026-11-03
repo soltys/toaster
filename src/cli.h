@@ -23,6 +23,9 @@ struct Options {
     bool version = false;
     bool listEmbedded = false; // print sounds/images compiled into the .exe
     bool listPacks = false;    // print embedded sound packs
+    bool installSkill = false; // install the embedded AI agent skill (wizard)
+    std::wstring skillTarget;  // --skill-target: tools to install into, no questions asked
+    bool printSkill = false;   // print the embedded SKILL.md
 };
 
 struct ParseError {

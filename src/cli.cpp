@@ -5,7 +5,8 @@
 namespace toaster::cli {
 namespace {
 
-enum class Id { Title, Body, Image, ImageStyle, Sound, Pack, Category, Wait, Timeout, ListEmbedded, ListPacks, Help, Version };
+enum class Id { Title, Body, Image, ImageStyle, Sound, Pack, Category, Wait, Timeout, ListEmbedded, ListPacks,
+                InstallSkill, SkillTarget, PrintSkill, Help, Version };
 
 struct OptionSpec {
     Id id;
@@ -26,6 +27,9 @@ constexpr std::array kSpecs{
     OptionSpec{Id::Timeout, L'\0', L"timeout", true},
     OptionSpec{Id::ListEmbedded, L'\0', L"list-embedded", false},
     OptionSpec{Id::ListPacks, L'\0', L"list-packs", false},
+    OptionSpec{Id::InstallSkill, L'\0', L"install-skill", false},
+    OptionSpec{Id::SkillTarget, L'\0', L"skill-target", true},
+    OptionSpec{Id::PrintSkill, L'\0', L"print-skill", false},
     OptionSpec{Id::Help,    L'h',  L"help",    false},
     OptionSpec{Id::Version, L'v',  L"version", false},
 };
@@ -90,6 +94,14 @@ std::optional<std::wstring> apply(Options& options, const OptionSpec& spec, std:
     case Id::Pack:     options.pack.assign(value);     break;
     case Id::Category: options.category.assign(value); break;
     case Id::ListPacks: options.listPacks = true;      break;
+    case Id::InstallSkill: options.installSkill = true; break;
+    case Id::SkillTarget:
+        if (value.empty()) {
+            return std::wstring(L"--skill-target needs a value, e.g. all or claude,codex");
+        }
+        options.skillTarget.assign(value);
+        break;
+    case Id::PrintSkill: options.printSkill = true;    break;
     case Id::Wait:    options.wait = true;         break;
     case Id::Help:    options.help = true;         break;
     case Id::Version: options.version = true;      break;
@@ -153,7 +165,11 @@ ParseResult parse(std::span<const std::wstring_view> args) {
         }
     }
 
-    if (options.help || options.version || options.listEmbedded || options.listPacks) {
+    if (!options.skillTarget.empty() && !options.installSkill) {
+        return ParseError{L"--skill-target can only be used together with --install-skill"};
+    }
+    if (options.help || options.version || options.listEmbedded || options.listPacks ||
+        options.installSkill || options.printSkill) {
         return options;
     }
 
@@ -203,6 +219,10 @@ std::wstring usage() {
         L"      --timeout <sec>       With --wait: give up after this many seconds\n"
         L"      --list-embedded       List sounds and images compiled into this .exe\n"
         L"      --list-packs          List embedded sound packs, categories and sounds\n"
+        L"      --install-skill       Install the 'toaster' AI agent skill (asks where)\n"
+        L"      --skill-target <list> With --install-skill: all, or any of claude, codex,\n"
+        L"                            copilot, vscode, vs (comma-separated); no questions\n"
+        L"      --print-skill         Print the embedded SKILL.md\n"
         L"  -h, --help                Show this help\n"
         L"  -v, --version             Show version\n"
         L"\n"
@@ -221,7 +241,8 @@ std::wstring usage() {
         L"\n"
         L"Example:\n"
         L"  toaster -t \"Build done\" -b \"All green\" -i logo.png -s done.wav --wait\n"
-        L"  toaster --pack peon --category task.complete\n";
+        L"  toaster --pack peon --category task.complete\n"
+        L"  toaster --install-skill\n";
 }
 
 } // namespace toaster::cli

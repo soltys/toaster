@@ -5,6 +5,7 @@
 #include "embedded.h"
 #include "exit_code.h"
 #include "packs.h"
+#include "skill.h"
 #include "sound.h"
 #include "toast.h"
 #include "version.h"
@@ -175,6 +176,12 @@ int run(const toaster::cli::Options& options) {
     if (options.listEmbedded) {
         toaster::console::out(toaster::embedded::describe());
         return toInt(ExitCode::Ok);
+    }
+    if (options.printSkill) {
+        return toaster::skill::print();
+    }
+    if (options.installSkill) {
+        return toaster::skill::install(options.skillTarget);
     }
     if (options.listPacks) {
         toaster::console::out(toaster::packs::describe());
