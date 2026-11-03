@@ -25,6 +25,19 @@ set(TOASTER_IMAGES_DIR "assets/images" CACHE PATH "Folder whose .png/.jpg/.jpeg/
 toaster_collect_assets(TOASTER_EMBED_SOUNDS "${TOASTER_SOUNDS_DIR}" wav mp3)
 toaster_collect_assets(TOASTER_EMBED_IMAGES "${TOASTER_IMAGES_DIR}" png jpg jpeg gif)
 
+# Sound packs: *.json files in TOASTER_SOUNDS_DIR describing categories of
+# sounds (see cmake/SoundPacks.cmake). Their sounds and icons are embedded too.
+include(SoundPacks)
+toaster_load_sound_packs("${TOASTER_SOUNDS_DIR}" TOASTER_PACK_SOUNDS TOASTER_PACK_IMAGES
+                         "${CMAKE_CURRENT_BINARY_DIR}/generated/sound_packs.h")
+# Don't embed a file twice when it is both loose in the folder and in a pack.
+foreach(item IN LISTS TOASTER_PACK_SOUNDS)
+    string(REGEX REPLACE "^[^|]*\\|" "" pack_file "${item}")
+    list(REMOVE_ITEM TOASTER_EMBED_SOUNDS "${pack_file}")
+endforeach()
+list(APPEND TOASTER_EMBED_SOUNDS ${TOASTER_PACK_SOUNDS})
+list(APPEND TOASTER_EMBED_IMAGES ${TOASTER_PACK_IMAGES})
+
 configure_file(src/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/version.h @ONLY)
 
 add_executable(toaster
@@ -35,6 +48,7 @@ add_executable(toaster
     src/app_id.cpp
     src/toast.cpp
     src/sound.cpp
+    src/packs.cpp
 )
 
 toaster_embed_assets(toaster

@@ -4,6 +4,7 @@
 #include "console.h"
 #include "embedded.h"
 #include "exit_code.h"
+#include "packs.h"
 #include "sound.h"
 #include "toast.h"
 #include "version.h"
@@ -76,7 +77,36 @@ ExitCode toExitCode(toaster::toast::Outcome outcome) {
     return ExitCode::Failure;
 }
 
-ExitCode notify(const toaster::cli::Options& options) {
+// Fills in --pack defaults: a random sound from the category, and the pack's
+// display name, the sound's label and the pack icon where the user gave none.
+toaster::cli::Options applyPack(toaster::cli::Options options) {
+    using namespace toaster;
+    const packs::SoundPack* pack = packs::find(options.pack);
+    if (!pack) {
+        throw InputError{L"unknown sound pack: '" + options.pack + L"' (see --list-packs)"};
+    }
+    const packs::PackCategory* category = packs::findCategory(*pack, options.category);
+    if (!category) {
+        throw InputError{L"sound pack '" + std::wstring(pack->name) + L"' has no category '" + options.category +
+                         L"' (available: " + packs::categoryNames(*pack) + L")"};
+    }
+    const packs::PackSound& picked = packs::pickRandom(*category);
+    options.sound.assign(picked.asset);
+    if (options.title.empty()) {
+        options.title.assign(pack->displayName);
+    }
+    if (options.body.empty()) {
+        options.body.assign(picked.label);
+    }
+    if (options.image.empty()) {
+        options.image.assign(pack->iconAsset);
+    }
+    return options;
+}
+
+ExitCode notify(const toaster::cli::Options& requested) {
+    const toaster::cli::Options options = requested.pack.empty() ? requested : applyPack(requested);
+
     toaster::toast::Content content;
     content.title = options.title;
     content.body = options.body;
@@ -134,6 +164,10 @@ int run(const toaster::cli::Options& options) {
     }
     if (options.listEmbedded) {
         toaster::console::out(toaster::embedded::describe());
+        return toInt(ExitCode::Ok);
+    }
+    if (options.listPacks) {
+        toaster::console::out(toaster::packs::describe());
         return toInt(ExitCode::Ok);
     }
 

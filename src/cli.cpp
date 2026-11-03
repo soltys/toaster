@@ -5,7 +5,7 @@
 namespace toaster::cli {
 namespace {
 
-enum class Id { Title, Body, Image, ImageStyle, Sound, Wait, Timeout, ListEmbedded, Help, Version };
+enum class Id { Title, Body, Image, ImageStyle, Sound, Pack, Category, Wait, Timeout, ListEmbedded, ListPacks, Help, Version };
 
 struct OptionSpec {
     Id id;
@@ -20,9 +20,12 @@ constexpr std::array kSpecs{
     OptionSpec{Id::Image,   L'i',  L"image",   true},
     OptionSpec{Id::ImageStyle, L'\0', L"image-style", true},
     OptionSpec{Id::Sound,   L's',  L"sound",   true},
+    OptionSpec{Id::Pack,    L'p',  L"pack",    true},
+    OptionSpec{Id::Category, L'c', L"category", true},
     OptionSpec{Id::Wait,    L'w',  L"wait",    false},
     OptionSpec{Id::Timeout, L'\0', L"timeout", true},
     OptionSpec{Id::ListEmbedded, L'\0', L"list-embedded", false},
+    OptionSpec{Id::ListPacks, L'\0', L"list-packs", false},
     OptionSpec{Id::Help,    L'h',  L"help",    false},
     OptionSpec{Id::Version, L'v',  L"version", false},
 };
@@ -84,6 +87,9 @@ std::optional<std::wstring> apply(Options& options, const OptionSpec& spec, std:
         options.imageStyle.assign(value);
         break;
     case Id::Sound:   options.sound.assign(value); break;
+    case Id::Pack:     options.pack.assign(value);     break;
+    case Id::Category: options.category.assign(value); break;
+    case Id::ListPacks: options.listPacks = true;      break;
     case Id::Wait:    options.wait = true;         break;
     case Id::Help:    options.help = true;         break;
     case Id::Version: options.version = true;      break;
@@ -147,12 +153,21 @@ ParseResult parse(std::span<const std::wstring_view> args) {
         }
     }
 
-    if (options.help || options.version || options.listEmbedded) {
+    if (options.help || options.version || options.listEmbedded || options.listPacks) {
         return options;
     }
 
-    if (options.title.empty()) {
+    if (options.title.empty() && options.pack.empty()) {
         return ParseError{L"missing required --title (-t)"};
+    }
+    if (!options.pack.empty() && options.category.empty()) {
+        return ParseError{L"--pack needs --category (-c); see --list-packs"};
+    }
+    if (options.pack.empty() && !options.category.empty()) {
+        return ParseError{L"--category can only be used together with --pack"};
+    }
+    if (!options.pack.empty() && !options.sound.empty()) {
+        return ParseError{L"use either --sound or --pack, not both"};
     }
     if (options.timeoutSeconds && !options.wait) {
         return ParseError{L"--timeout can only be used together with --wait"};
@@ -168,19 +183,25 @@ std::wstring usage() {
         L"Shows a Windows toast notification and optionally plays a .wav or .mp3 file.\n"
         L"\n"
         L"Options:\n"
-        L"  -t, --title <text>        Toast title (required)\n"
+        L"  -t, --title <text>        Toast title (required unless --pack is used)\n"
         L"  -b, --body <text>         Toast body text\n"
         L"  -i, --image <path|name>   Image shown in the toast (file or embedded name)\n"
         L"      --image-style <style> logo (default), inline or hero\n"
         L"  -s, --sound <path|name>   .wav/.mp3 played when the toast is shown (file or embedded name)\n"
+        L"  -p, --pack <name>         Sound pack: plays a random sound from --category\n"
+        L"  -c, --category <name>     Pack category, e.g. task.complete\n"
         L"  -w, --wait                Wait until the toast is dismissed or clicked\n"
         L"      --timeout <sec>       With --wait: give up after this many seconds\n"
         L"      --list-embedded       List sounds and images compiled into this .exe\n"
+        L"      --list-packs          List embedded sound packs, categories and sounds\n"
         L"  -h, --help                Show this help\n"
         L"  -v, --version             Show version\n"
         L"\n"
         L"Values can also be given as --name=value. For --sound and --image an\n"
         L"existing file wins; otherwise the value is looked up among embedded assets.\n"
+        L"\n"
+        L"With --pack, the title defaults to the pack's display name, the body to the\n"
+        L"sound's label and the image to the pack's icon.\n"
         L"\n"
         L"Exit codes:\n"
         L"  0  shown (with --wait: clicked)    3  --wait: closed by the user\n"
@@ -188,7 +209,8 @@ std::wstring usage() {
         L"  2  Windows failed to show it       5  --wait: --timeout elapsed\n"
         L"\n"
         L"Example:\n"
-        L"  toaster -t \"Build done\" -b \"All green\" -i logo.png -s done.wav --wait\n";
+        L"  toaster -t \"Build done\" -b \"All green\" -i logo.png -s done.wav --wait\n"
+        L"  toaster --pack peon --category task.complete\n";
 }
 
 } // namespace toaster::cli

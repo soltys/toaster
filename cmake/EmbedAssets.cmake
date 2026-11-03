@@ -5,7 +5,8 @@
 #       SOUNDS <file>...   # .wav / .mp3 files
 #       IMAGES <file>...)  # .png / .jpg / .jpeg / .gif files
 #
-# Each asset is addressed at runtime by its file name without extension,
+# Items may be "<name>|<path>" to choose the asset name explicitly.
+# Otherwise each asset is addressed at runtime by its file name without extension,
 # lower-cased, with characters other than [a-z0-9_] replaced by '_'.
 # Example: "Build-Done.wav" -> "build_done".
 
@@ -34,6 +35,18 @@ function(toaster_collect_assets out_var dir)
     set(${out_var} "${files}" PARENT_SCOPE)
 endfunction()
 
+# Writes a file only when its content differs, so unchanged generated files
+# don't trigger rebuilds.
+function(toaster_write_if_changed file content)
+    if(EXISTS "${file}")
+        file(READ "${file}" existing)
+        if(existing STREQUAL content)
+            return()
+        endif()
+    endif()
+    file(WRITE "${file}" "${content}")
+endfunction()
+
 function(_toaster_asset_name out_var file)
     get_filename_component(stem "${file}" NAME_WE)
     string(TOLOWER "${stem}" stem)
@@ -56,7 +69,14 @@ function(toaster_embed_assets target)
     set(dependencies "")
 
     foreach(kind SOUNDS IMAGES)
-        foreach(file IN LISTS ARG_${kind})
+        foreach(item IN LISTS ARG_${kind})
+            # An item is either "<path>" or "<name>|<path>" with an explicit name.
+            set(explicit_name "")
+            set(file "${item}")
+            if(item MATCHES "^([^|]+)\\|(.+)$")
+                set(explicit_name "${CMAKE_MATCH_1}")
+                set(file "${CMAKE_MATCH_2}")
+            endif()
             get_filename_component(path "${file}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
             if(NOT EXISTS "${path}")
                 message(FATAL_ERROR "Embedded asset not found: ${path}")
@@ -64,7 +84,11 @@ function(toaster_embed_assets target)
 
             get_filename_component(ext "${path}" LAST_EXT)
             string(TOLOWER "${ext}" ext)
-            _toaster_asset_name(name "${path}")
+            if(explicit_name STREQUAL "")
+                _toaster_asset_name(name "${path}")
+            else()
+                _toaster_asset_name(name "${explicit_name}")
+            endif()
             if(name STREQUAL "")
                 message(FATAL_ERROR "Cannot derive an asset name from: ${path}")
             endif()
@@ -130,9 +154,8 @@ ${image_entries}};
 } // namespace toaster::embedded
 ")
 
-    # file(CONFIGURE) only rewrites when the content changes, avoiding rebuilds.
-    file(CONFIGURE OUTPUT "${rc_file}" CONTENT "${rc_content}" @ONLY)
-    file(CONFIGURE OUTPUT "${header_file}" CONTENT "${header_content}" @ONLY)
+    toaster_write_if_changed("${rc_file}" "${rc_content}")
+    toaster_write_if_changed("${header_file}" "${header_content}")
 
     target_sources(${target} PRIVATE "${rc_file}")
     target_include_directories(${target} PRIVATE "${out_dir}")

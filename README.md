@@ -21,9 +21,12 @@ toaster -t "Build done" -b "All green" -i logo.png -s done.wav --wait
 | `-i`  | `--image <path\|name>` | Image file, or the name of an embedded image         |
 |       | `--image-style <style>` | `logo` (small, next to the text; default), `inline` or `hero` |
 | `-s`  | `--sound <path\|name>` | `.wav`/`.mp3` file, or the name of an embedded sound |
+| `-p`  | `--pack <name>`   | Sound pack: play a random sound from `--category`         |
+| `-c`  | `--category <name>` | Pack category, e.g. `task.complete`                     |
 | `-w`  | `--wait`          | Block until the toast is dismissed or clicked             |
 |       | `--timeout <sec>` | With `--wait`: give up after this many seconds            |
 |       | `--list-embedded` | List sounds and images compiled into the `.exe`           |
+|       | `--list-packs`    | List embedded sound packs, their categories and sounds    |
 | `-h`  | `--help`          | Show help                                                 |
 | `-v`  | `--version`       | Show version                                              |
 
@@ -104,3 +107,37 @@ If a file with that name exists in the current directory it is used instead.
 Windows only shows toast images from files and plays MP3 (through MCI) only
 from files, so embedded images and `.mp3` sounds are unpacked once to
 `%LOCALAPPDATA%\toaster\cache`. Embedded `.wav` files play straight from the `.exe`.
+
+### Sound packs
+
+The sounds folder can also hold sound pack descriptions: JSON files in the
+CESP format (`"cesp_version": "1.0"`), for example `peon.json` or
+`glados.json`. Paths inside a pack (`categories.<name>.sounds[].file` and the
+optional `icon`) are relative to the JSON file:
+
+```
+sounds/
+  peon.json
+  glados.json
+  GLaDOS_P2.png
+  sounds/
+    PeonReady1.wav
+    Hello.mp3
+    ...
+```
+
+CMake reads the packs when it configures the build: it checks every file's
+`sha256` (a mismatch stops the build), embeds the sounds and the icon, and
+compiles the pack names, categories and labels into the `.exe`. Nothing is
+parsed at runtime.
+
+```
+toaster --list-packs
+toaster --pack peon --category task.complete
+toaster --pack glados -c task.error -t "Build failed" --wait
+```
+
+`--pack` plays a random sound from the category. Unless you pass them yourself,
+the title is the pack's `display_name`, the body is the sound's `label` and the
+image is the pack's `icon`. Pack sounds can also be played directly as
+`<pack>_<file name>`, for example `-s peon_peonready1`.
