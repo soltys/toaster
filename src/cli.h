@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace toaster::cli {
 
@@ -17,6 +18,7 @@ struct Options {
     std::wstring sound;   // .wav file path, or the name of an embedded sound
     std::wstring pack;     // sound pack name (--pack)
     std::wstring category; // category within the pack (--category)
+    std::vector<std::wstring> buttons; // --button labels, in order (needs --wait)
     bool wait = false;    // block until the toast is dismissed or activated
     std::optional<std::uint32_t> timeoutSeconds; // only meaningful with --wait
     bool help = false;

@@ -36,8 +36,13 @@ std::wstring fileUri(const std::filesystem::path& path) {
     return path.wstring();
 }
 
+constexpr std::wstring_view kButtonArgumentPrefix = L"button:";
+
 std::wstring buildXml(const Content& content) {
-    std::wstring xml = L"<toast><visual><binding template=\"ToastGeneric\">";
+    // With buttons the toast is a question, so keep it on screen until the
+    // user answers instead of letting it slide into Action Center after ~5 s.
+    std::wstring xml = content.buttons.empty() ? L"<toast>" : L"<toast scenario=\"reminder\">";
+    xml += L"<visual><binding template=\"ToastGeneric\">";
 
     if (!content.title.empty()) {
         xml += L"<text>";
@@ -67,6 +72,18 @@ std::wstring buildXml(const Content& content) {
     if (content.silent) {
         xml += L"<audio silent=\"true\"/>";
     }
+    if (!content.buttons.empty()) {
+        xml += L"<actions>";
+        for (std::size_t i = 0; i < content.buttons.size(); ++i) {
+            xml += L"<action activationType=\"foreground\" content=\"";
+            appendEscaped(xml, content.buttons[i]);
+            xml += L"\" arguments=\"";
+            xml += kButtonArgumentPrefix;
+            xml += std::to_wstring(i + 1);
+            xml += L"\"/>";
+        }
+        xml += L"</actions>";
+    }
     xml += L"</toast>";
     return xml;
 }
@@ -77,13 +94,32 @@ struct State {
     UniqueHandle signal{::CreateEventW(nullptr, TRUE, FALSE, nullptr)};
     std::atomic<Outcome> outcome{Outcome::Pending};
     std::atomic<std::int32_t> error{0};
+    std::atomic<std::size_t> button{0};
 
-    void finish(Outcome value) {
+    void finish(Outcome value, std::size_t clicked = 0) {
         Outcome expected = Outcome::Pending;
-        outcome.compare_exchange_strong(expected, value);
+        if (outcome.compare_exchange_strong(expected, value)) {
+            button = clicked;
+        }
         ::SetEvent(signal.get());
     }
 };
+
+// Returns the 1-based button index encoded in the activation arguments, or 0
+// when the toast body itself was clicked.
+std::size_t buttonFromArguments(std::wstring_view arguments) {
+    if (!arguments.starts_with(kButtonArgumentPrefix)) {
+        return 0;
+    }
+    std::size_t index = 0;
+    for (wchar_t c : arguments.substr(kButtonArgumentPrefix.size())) {
+        if (c < L'0' || c > L'9') {
+            return 0;
+        }
+        index = index * 10 + static_cast<std::size_t>(c - L'0');
+    }
+    return index <= kMaxButtons ? index : 0;
+}
 
 } // namespace
 
@@ -132,9 +168,18 @@ std::unique_ptr<Notification> Notification::show(const Content& content, bool tr
             winrt::throw_last_error();
         }
         impl->state = state;
-        impl->activated = impl->toast.Activated(winrt::auto_revoke, [state](auto&&, auto&&) {
-            state->finish(Outcome::Activated);
-        });
+        impl->activated = impl->toast.Activated(winrt::auto_revoke,
+            [state](auto&&, const winrt::Windows::Foundation::IInspectable& args) {
+                std::size_t button = 0;
+                if (const auto activation = args.try_as<notifications::ToastActivatedEventArgs>()) {
+                    button = buttonFromArguments(activation.Arguments());
+                }
+                if (button != 0) {
+                    state->finish(Outcome::ButtonClicked, button);
+                } else {
+                    state->finish(Outcome::Activated);
+                }
+            });
         impl->dismissed = impl->toast.Dismissed(winrt::auto_revoke,
             [state](auto&&, const notifications::ToastDismissedEventArgs& args) {
                 switch (args.Reason()) {
@@ -180,6 +225,10 @@ Outcome Notification::wait(std::optional<std::chrono::milliseconds> timeout) {
 
 std::int32_t Notification::errorCode() const {
     return impl_->state ? impl_->state->error.load() : 0;
+}
+
+std::size_t Notification::clickedButton() const {
+    return impl_->state ? impl_->state->button.load() : 0;
 }
 
 } // namespace toaster::toast

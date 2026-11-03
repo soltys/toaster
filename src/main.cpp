@@ -66,6 +66,7 @@ ExitCode toExitCode(toaster::toast::Outcome outcome) {
     switch (outcome) {
     case Outcome::Pending:
     case Outcome::Activated: return ExitCode::Ok;
+    case Outcome::ButtonClicked: return ExitCode::FirstButton; // offset added by the caller
     case Outcome::Dismissed: return ExitCode::Dismissed;
     case Outcome::Expired:   return ExitCode::Expired;
     case Outcome::TimedOut:  return ExitCode::TimedOut;
@@ -101,13 +102,14 @@ toaster::cli::Options applyPack(toaster::cli::Options options) {
     return options;
 }
 
-ExitCode notify(const toaster::cli::Options& requested) {
+int notify(const toaster::cli::Options& requested) {
     const toaster::cli::Options options = requested.pack.empty() ? requested : applyPack(requested);
 
     toaster::toast::Content content;
     content.title = options.title;
     content.body = options.body;
     content.imageStyle = toImageStyle(options.imageStyle);
+    content.buttons = options.buttons;
     if (!options.image.empty()) {
         content.image = resolveImage(options.image);
     }
@@ -123,9 +125,9 @@ ExitCode notify(const toaster::cli::Options& requested) {
         std::wstring error;
         if (!toaster::sound::play(*sound, /*async=*/false, error)) {
             toaster::console::err(L"toaster: could not play '" + options.sound + L"': " + error + L"\n");
-            return ExitCode::Failure;
+            return toInt(ExitCode::Failure);
         }
-        return ExitCode::Ok;
+        return toInt(ExitCode::Ok);
     }
 
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
@@ -144,7 +146,7 @@ ExitCode notify(const toaster::cli::Options& requested) {
     }
 
     if (!options.wait) {
-        return ExitCode::Ok;
+        return toInt(ExitCode::Ok);
     }
 
     std::optional<std::chrono::milliseconds> timeout;
@@ -157,7 +159,15 @@ ExitCode notify(const toaster::cli::Options& requested) {
         swprintf_s(code, L"0x%08X", static_cast<unsigned>(notification->errorCode()));
         toaster::console::err(std::wstring(L"toaster: Windows failed to show the notification (") + code + L")\n");
     }
-    return toExitCode(outcome);
+    if (outcome == toaster::toast::Outcome::ButtonClicked) {
+        const std::size_t button = notification->clickedButton(); // 1-based
+        if (button >= 1 && button <= options.buttons.size()) {
+            toaster::console::out(options.buttons[button - 1] + L"\n");
+            return toInt(ExitCode::FirstButton) + static_cast<int>(button) - 1;
+        }
+        return toInt(ExitCode::Ok);
+    }
+    return toInt(toExitCode(outcome));
 }
 
 int run(const toaster::cli::Options& options) {
@@ -185,7 +195,7 @@ int run(const toaster::cli::Options& options) {
     }
 
     try {
-        return toInt(notify(options));
+        return notify(options);
     } catch (const InputError& error) {
         toaster::console::err(L"toaster: " + error.message + L"\n");
         return toInt(ExitCode::UsageError);

@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace toaster::toast {
 
@@ -21,11 +22,16 @@ struct Content {
     std::optional<std::filesystem::path> image; // absolute path to an existing file
     ImageStyle imageStyle = ImageStyle::Logo;
     bool silent = false;                        // suppress the default Windows toast sound
+    std::vector<std::wstring> buttons;          // action button labels, at most kMaxButtons
 };
+
+// Windows shows at most five action buttons on a toast.
+inline constexpr std::size_t kMaxButtons = 5;
 
 enum class Outcome {
     Pending,   // still on screen / in Action Center
     Activated, // user clicked the toast
+    ButtonClicked, // user clicked one of Content::buttons, see clickedButton()
     Dismissed, // user closed the toast
     Expired,   // toast left the screen on its own (moved to Action Center)
     TimedOut,  // the --timeout given to wait() elapsed
@@ -51,6 +57,9 @@ public:
 
     // Error code reported by Windows when wait() returned Failed.
     [[nodiscard]] std::int32_t errorCode() const;
+
+    // 1-based index into Content::buttons when wait() returned ButtonClicked.
+    [[nodiscard]] std::size_t clickedButton() const;
 
 private:
     struct Impl;

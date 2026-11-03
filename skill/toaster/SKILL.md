@@ -45,6 +45,7 @@ toaster -t "Need your input" -b "Which database should I migrate?" -i <image>
 | `-s`  | `--sound <path\|name>`  | `.wav`/`.mp3` file, or the name of an embedded sound |
 | `-p`  | `--pack <name>`         | Sound pack: plays a random sound from `--category` |
 | `-c`  | `--category <name>`     | Pack category, e.g. `task.complete`, `task.error`, `input.required` |
+| `-B`  | `--button <label>`      | Add an action button (repeatable, up to 5; needs `--wait`) |
 | `-w`  | `--wait`                | Block until the toast is clicked or dismissed |
 |       | `--timeout <sec>`       | With `--wait`: give up after this many seconds |
 |       | `--list-embedded`       | List sounds and images built into this toaster.exe |
@@ -93,6 +94,17 @@ click-to-confirm flow, and always add `--timeout` so you can't hang forever:
 toaster -t "Deploy to staging?" -b "Click to confirm" --wait --timeout 120
 ```
 
+To ask a question, add buttons with `-B`/`--button` (needs `--wait`). The toast
+then stays on screen until answered; toaster prints the clicked label to stdout
+and exits with 11 for the first button, 12 for the second, and so on:
+
+```
+toaster -t "Deploy to staging?" -B Deploy -B Cancel --wait --timeout 120
+```
+
+Only proceed on the exact "yes" button (exit 11 here). Treat every other code,
+including 3 (closed) and 5 (timeout), as "no".
+
 ## Exit codes
 
 | Code | Meaning |
@@ -103,6 +115,7 @@ toaster -t "Deploy to staging?" -b "Click to confirm" --wait --timeout 120
 | 3 | `--wait`: the user closed the toast |
 | 4 | `--wait`: the toast expired to Action Center |
 | 5 | `--wait --timeout`: time ran out |
+| 11–15 | `--button`: button 1–5 was clicked (label printed to stdout) |
 
 A non-zero code from a plain notification is not a reason to stop your task;
 report it to the user only if they rely on the toasts.

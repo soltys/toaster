@@ -23,6 +23,7 @@ toaster -t "Build done" -b "All green" -i logo.png -s done.wav --wait
 | `-s`  | `--sound <path\|name>` | `.wav`/`.mp3` file, or the name of an embedded sound |
 | `-p`  | `--pack <name>`   | Sound pack: play a random sound from `--category`         |
 | `-c`  | `--category <name>` | Pack category, e.g. `task.complete`                     |
+| `-B`  | `--button <label>` | Add an action button (repeatable, up to 5; needs `--wait`) |
 | `-w`  | `--wait`          | Block until the toast is dismissed or clicked             |
 |       | `--timeout <sec>` | With `--wait`: give up after this many seconds            |
 |       | `--list-embedded` | List sounds and images compiled into the `.exe`           |
@@ -46,6 +47,15 @@ sound replaces the default Windows notification sound.
 With `--wait` it blocks until the toast is resolved. Windows moves an unclicked
 toast to Action Center after a few seconds, which also ends the wait.
 
+### Buttons
+
+`-B`/`--button` adds an action button such as OK or Cancel; repeat it for more
+(Windows shows at most five, in the order given). Buttons need `--wait`. A toast
+with buttons stays on screen until the user answers instead of sliding into
+Action Center. When a button is clicked, toaster prints its label to stdout
+and exits with 11 for the first button, 12 for the second, and so on. Closing
+the toast with X still gives 3, and clicking the toast body still gives 0.
+
 ### Exit codes
 
 | Code | Meaning |
@@ -56,6 +66,7 @@ toast to Action Center after a few seconds, which also ends the wait.
 | 3 | `--wait`: the user closed the toast |
 | 4 | `--wait`: the toast left the screen on its own |
 | 5 | `--wait --timeout`: time ran out and the toast was removed |
+| 11–15 | `--button`: button 1–5 was clicked (its label is printed to stdout) |
 
 ### PowerShell
 
@@ -63,6 +74,9 @@ toast to Action Center after a few seconds, which also ends the wait.
 toaster -t "Backup finished" -b "$env:COMPUTERNAME" -s done.wav
 toaster -t "Deploy?" -b "Click to confirm" --wait --timeout 60
 if ($LASTEXITCODE -eq 0) { ./deploy.ps1 }
+
+$answer = toaster -t "Deploy to production?" -B Deploy -B Cancel --wait --timeout 300
+if ($answer -eq "Deploy") { ./deploy.ps1 -Production }
 ```
 
 ### CMD
@@ -71,6 +85,9 @@ if ($LASTEXITCODE -eq 0) { ./deploy.ps1 }
 toaster -t "Build failed" -b "See build.log" -i error.png -s fail.wav
 toaster -t "Ready" --wait
 if %ERRORLEVEL% EQU 3 echo Closed by the user
+
+toaster -t "Overwrite files?" -B OK -B Cancel --wait
+if %ERRORLEVEL% EQU 11 goto overwrite
 ```
 
 ## AI agent skill
