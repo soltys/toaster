@@ -106,7 +106,15 @@ std::unique_ptr<Notification> Notification::show(const Content& content, bool tr
     impl->notifier = notifications::ToastNotificationManager::CreateToastNotifier(
         winrt::hstring(app_id::kAppUserModelId));
 
-    if (impl->notifier.Setting() != notifications::NotificationSetting::Enabled) {
+    // Setting() throws "Element not found" for AppUserModelIDs that are only
+    // registered in the registry (no Start Menu shortcut). In that case we
+    // cannot tell up front and just try to show the toast.
+    auto setting = notifications::NotificationSetting::Enabled;
+    try {
+        setting = impl->notifier.Setting();
+    } catch (const winrt::hresult_error&) {
+    }
+    if (setting != notifications::NotificationSetting::Enabled) {
         throw winrt::hresult_error(E_ACCESSDENIED,
                                    L"notifications are turned off for Toaster or for this user "
                                    L"(check Settings > System > Notifications)");
