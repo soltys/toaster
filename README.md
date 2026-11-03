@@ -16,7 +16,7 @@ toaster -t "Build done" -b "All green" -i logo.png -s done.wav --wait
 
 | Short | Long              | Meaning                                                   |
 |-------|-------------------|-----------------------------------------------------------|
-| `-t`  | `--title <text>`  | Toast title (required)                                    |
+| `-t`  | `--title <text>`  | Toast title (optional)                                    |
 | `-b`  | `--body <text>`   | Toast body text                                           |
 | `-i`  | `--image <path\|name>` | Image file, or the name of an embedded image         |
 |       | `--image-style <style>` | `logo` (small, next to the text; default), `inline` or `hero` |

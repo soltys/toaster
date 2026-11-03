@@ -157,9 +157,6 @@ ParseResult parse(std::span<const std::wstring_view> args) {
         return options;
     }
 
-    if (options.title.empty() && options.pack.empty()) {
-        return ParseError{L"missing required --title (-t)"};
-    }
     if (!options.pack.empty() && options.category.empty()) {
         return ParseError{L"--pack needs --category (-c); see --list-packs"};
     }
@@ -178,12 +175,12 @@ ParseResult parse(std::span<const std::wstring_view> args) {
 
 std::wstring usage() {
     return
-        L"Usage: toaster -t <title> [options]\n"
+        L"Usage: toaster [-t <title>] [-b <body>] [options]\n"
         L"\n"
         L"Shows a Windows toast notification and optionally plays a .wav or .mp3 file.\n"
         L"\n"
         L"Options:\n"
-        L"  -t, --title <text>        Toast title (required unless --pack is used)\n"
+        L"  -t, --title <text>        Toast title (optional)\n"
         L"  -b, --body <text>         Toast body text\n"
         L"  -i, --image <path|name>   Image shown in the toast (file or embedded name)\n"
         L"      --image-style <style> logo (default), inline or hero\n"
@@ -200,6 +197,7 @@ std::wstring usage() {
         L"Values can also be given as --name=value. For --sound and --image an\n"
         L"existing file wins; otherwise the value is looked up among embedded assets.\n"
         L"\n"
+        L"Without --title the toast shows only the body; with neither, it shows \"Toaster\".\n"
         L"With --pack, the title defaults to the pack's display name, the body to the\n"
         L"sound's label and the image to the pack's icon.\n"
         L"\n"

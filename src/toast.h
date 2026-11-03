@@ -16,7 +16,7 @@ enum class ImageStyle {
 };
 
 struct Content {
-    std::wstring title;
+    std::wstring title; // may be empty: the body then becomes the first line
     std::wstring body;
     std::optional<std::filesystem::path> image; // absolute path to an existing file
     ImageStyle imageStyle = ImageStyle::Logo;

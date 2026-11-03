@@ -39,9 +39,16 @@ std::wstring fileUri(const std::filesystem::path& path) {
 std::wstring buildXml(const Content& content) {
     std::wstring xml = L"<toast><visual><binding template=\"ToastGeneric\">";
 
-    xml += L"<text>";
-    appendEscaped(xml, content.title);
-    xml += L"</text>";
+    // A toast needs at least one line of text.
+    std::wstring_view title = content.title;
+    if (title.empty() && content.body.empty()) {
+        title = app_id::kDisplayName;
+    }
+    if (!title.empty()) {
+        xml += L"<text>";
+        appendEscaped(xml, title);
+        xml += L"</text>";
+    }
 
     if (!content.body.empty()) {
         xml += L"<text>";
