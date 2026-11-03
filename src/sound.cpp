@@ -5,6 +5,11 @@
 #include "handle.h"
 
 #include <mmsystem.h>
+#include <objbase.h>
+
+#include <future>
+#include <stop_token>
+#include <thread>
 
 namespace toaster::sound {
 namespace {
@@ -34,32 +39,75 @@ std::wstring mciError(MCIERROR code) {
 
 // MP3 goes through MCI (winmm), which decodes it with the codecs that ship
 // with Windows, so no extra library is needed.
+//
+// MCI's mpegvideo driver is built on DirectShow and fails to load in a
+// multithreaded COM apartment, which is what the toast code uses. So every
+// MCI call runs on a dedicated single-threaded-apartment thread.
 class Mp3Playback final : public Playback {
 public:
-    static constexpr const wchar_t* kAlias = L"toaster_sound";
-
     ~Mp3Playback() override {
-        ::mciSendStringW((std::wstring(L"close ") + kAlias).c_str(), nullptr, 0, nullptr);
+        worker_.request_stop(); // std::jthread joins on destruction
     }
 
     static std::unique_ptr<Playback> start(const std::filesystem::path& path, bool async, std::wstring& error) {
-        const std::wstring open = L"open \"" + path.wstring() + L"\" type mpegvideo alias " + kAlias;
-        if (const MCIERROR code = ::mciSendStringW(open.c_str(), nullptr, 0, nullptr)) {
-            error = mciError(code);
+        auto playback = std::unique_ptr<Mp3Playback>(new Mp3Playback());
+
+        std::promise<std::wstring> started;
+        auto startResult = started.get_future();
+        playback->worker_ = std::jthread(
+            [path, started = std::move(started)](std::stop_token stop) mutable { run(path, started, stop); });
+
+        error = startResult.get();
+        if (!error.empty()) {
             return nullptr;
         }
-        auto playback = std::unique_ptr<Playback>(new Mp3Playback());
-
-        const std::wstring play = std::wstring(L"play ") + kAlias + (async ? L"" : L" wait");
-        if (const MCIERROR code = ::mciSendStringW(play.c_str(), nullptr, 0, nullptr)) {
-            error = mciError(code);
-            return nullptr; // destructor closes the device
+        if (!async) {
+            playback->worker_.join(); // returns when the sound has finished
         }
         return playback;
     }
 
 private:
+    static constexpr const wchar_t* kAlias = L"toaster_sound";
+
     Mp3Playback() = default;
+
+    static MCIERROR send(const std::wstring& command, wchar_t* result = nullptr, UINT resultSize = 0) {
+        return ::mciSendStringW(command.c_str(), result, resultSize, nullptr);
+    }
+
+    static void run(const std::filesystem::path& path, std::promise<std::wstring>& started, std::stop_token stop) {
+        const HRESULT com = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
+        const std::wstring alias(kAlias);
+        if (const MCIERROR code = send(L"open \"" + path.wstring() + L"\" type mpegvideo alias " + alias)) {
+            started.set_value(mciError(code));
+        } else {
+            if (const MCIERROR playCode = send(L"play " + alias)) {
+                started.set_value(mciError(playCode));
+            } else {
+                started.set_value(L"");
+                wchar_t mode[32] = {};
+                while (!stop.stop_requested()) {
+                    if (send(L"status " + alias + L" mode", mode, static_cast<UINT>(std::size(mode))) != 0) {
+                        break;
+                    }
+                    const std::wstring_view state(mode);
+                    if (state != L"playing" && state != L"seeking" && state != L"not ready") {
+                        break; // "stopped" once the end is reached
+                    }
+                    ::Sleep(20);
+                }
+            }
+            send(L"close " + alias);
+        }
+
+        if (SUCCEEDED(com)) {
+            ::CoUninitialize();
+        }
+    }
+
+    std::jthread worker_;
 };
 
 bool hasExtension(const std::filesystem::path& path, std::wstring_view ext) {
