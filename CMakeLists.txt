@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.2.3)
 
 project(toaster
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "Windows toast notifications and .wav playback from the command line"
     LANGUAGES CXX RC)
 
