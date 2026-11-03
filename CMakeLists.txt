@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 4.2.3)
 
 project(toaster
     VERSION 0.1.0

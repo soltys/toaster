@@ -65,7 +65,7 @@ if %ERRORLEVEL% EQU 3 echo Closed by the user
 
 ## Building
 
-Requires Visual Studio 2022 (MSVC, C++20) with the Windows 10/11 SDK, and CMake 3.21+.
+Requires Visual Studio 2022 (MSVC, C++20) with the Windows 10/11 SDK, and CMake 4.2.3+.
 
 ```
 cmake --preset msvc-x64
