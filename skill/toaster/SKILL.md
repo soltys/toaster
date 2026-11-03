@@ -31,9 +31,9 @@ the user once and carry on without notifications.
 ## Basic usage
 
 ```
-toaster -t "Build finished" -b "All 214 tests passed"
-toaster -t "Build failed" -b "3 errors in parser.cpp" -s <sound>
-toaster -t "Need your input" -b "Which database should I migrate?" -i <image>
+toaster -t "Build finished" -b "All 214 tests passed" -i success
+toaster -t "Build failed" -b "3 errors in parser.cpp" -i failure --pack peon -c task.error
+toaster -t "Need your input" -b "Which database should I migrate?" -i question --pack peon -c input.required
 ```
 
 | Short | Long                    | Meaning |
@@ -60,32 +60,66 @@ toast. With neither, toaster shows nothing and only plays the sound, so
 `-s`/`--sound` is then required:
 
 ```
-toaster -s done          # sound only, no toast
+toaster -s peon_peonyes1          # sound only, no toast
 ```
 
 ## Sounds, images and packs
 
-Each toaster.exe can have sounds, images and sound packs compiled in. Run
-`toaster --list-embedded` and `toaster --list-packs` once to see what this
-build offers, then refer to them by name (`-s done`, `-i logo`). A path to a
-real file works too.
+A standard toaster.exe has its sounds and icons compiled in, so there is
+nothing to install and no file paths to pass. Refer to them by name. Run
+`toaster --list-embedded` and `toaster --list-packs` once if you need the exact
+list for this build. A path to a real file works too.
 
-Builds made with `scripts/Get-Images.ps1` include icons named after the event:
-`success`, `failure`, `warning`, `info`, `question` (input needed), `build`,
-`deploy`, `waiting`, `done`, `bug`, `robot` and others. Match the icon to the
-event when `--list-embedded` shows it, e.g. `-i failure` for a failed build.
+### Icons (`-i <name>`)
 
-With `--pack`, the title, body and image default to the pack's own values, so
-this is the shortest way to make a noise:
+Embedded icons are named after the event. Pick the one that matches:
+
+| Event | Icon |
+|-------|------|
+| Task succeeded | `success` (big win: `celebrate`, `trophy`) |
+| Task failed | `failure` (tests: `bug`, crash: `crash`, outage: `fire`) |
+| Need the user's input or approval | `question` |
+| Warning | `warning` |
+| Blocked or stopped | `stop` |
+| Information or tip | `info`, `idea` |
+| Build, deploy, install | `build`, `deploy`, `package` |
+| Still running, long wait, finished | `waiting`, `timer`, `coffee`, `done` |
+| Approved or rejected | `thumbs_up`, `thumbs_down` |
+| Security or permissions | `locked` |
+| Other | `bell` (generic), `robot` (AI agent), `alarm`, `save`, `settings`, `computer`, `mail`, `sparkles` |
+
+Use `-i` with `--image-style hero` only if the user asks for a large banner;
+the default `logo` is right for almost everything.
+
+### Sound packs (`--pack <name> --category <category>`)
+
+Sounds come in packs. `--pack` plays a random sound from the category, and the
+sound's text label becomes the body and the pack's name the title, unless you
+pass `-t`/`-b`. The packs have no icon of their own, so always add `-i`.
+
+| Pack | Voice | Language |
+|------|-------|----------|
+| `peon` | Orc Peon (Warcraft) | English |
+| `glados` | GLaDOS (Portal) | English |
+| `jan_pawel_2` | Jan Pawel 2 | Polish |
+
+Categories, in every pack: `task.complete` (success), `task.error` (failure),
+`input.required` (you need the user), `task.acknowledge` (started working),
+`session.start`, `resource.limit` (quota, disk, rate limit) and `user.spam`.
+`jan_pawel_2` also has `session.end` and `task.progress`.
 
 ```
-toaster --pack <pack> --category task.complete
-toaster --pack <pack> -c task.error -t "Tests failed" -b "See test.log"
+toaster --pack peon -c task.complete -t "Build finished" -b "214 tests passed" -i success
+toaster --pack glados -c task.error -t "Tests failed" -b "See test.log" -i failure
+toaster --pack peon -c input.required -t "Need your input" -b "Which database?" -i question
 ```
 
-Pick the category that matches the event when the pack has it:
-`task.complete` for success, `task.error` for failures, `input.required` when
-you need the user. Fall back to plain `-t`/`-b` if there are no packs.
+Use the user's usual pack if they named one (or one is set in their
+instructions); otherwise use `peon`. Match category and icon to the event and
+don't mix them, e.g. no `task.error` sound with `-i success`.
+
+A single pack sound can also be played by name as `<pack>_<file name>`, for
+example `-s peon_peonready1`. Run `toaster --list-embedded` for the names.
 
 ## Fire-and-forget vs. waiting
 
@@ -96,7 +130,7 @@ this: never block your own work on a notification.
 click-to-confirm flow, and always add `--timeout` so you can't hang forever:
 
 ```
-toaster -t "Deploy to staging?" -b "Click to confirm" --wait --timeout 120
+toaster -t "Deploy to staging?" -b "Click to confirm" -i question --wait --timeout 120
 ```
 
 To ask a question, add buttons with `-B`/`--button` (needs `--wait`). The toast
@@ -104,7 +138,7 @@ then stays on screen until answered; toaster prints the clicked label to stdout
 and exits with 11 for the first button, 12 for the second, and so on:
 
 ```
-toaster -t "Deploy to staging?" -B Deploy -B Cancel --wait --timeout 120
+toaster -t "Deploy to staging?" -i question -B Deploy -B Cancel --wait --timeout 120
 ```
 
 Only proceed on the exact "yes" button (exit 11 here). Treat every other code,
