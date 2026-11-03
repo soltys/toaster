@@ -183,6 +183,40 @@ sounds/
     ...
 ```
 
+#### Downloading packs
+
+`scripts/Get-SoundPacks.ps1` downloads packs from the
+[OpenPeon registry](https://github.com/PeonPing/registry) (the peon-ping
+packs) into the sounds folder, by default the `msvc-x64` preset's
+`C:\temp\toast_notification\sounds`. It checks the sha256 of each pack's
+manifest and of every sound, and skips files that are already present and
+valid. The script works in Windows PowerShell 5.1 and PowerShell 7.
+
+```powershell
+.\scripts\Get-SoundPacks.ps1                               # peon and glados
+.\scripts\Get-SoundPacks.ps1 -Name peon,aoe2 -Destination D:\toaster\sounds
+.\scripts\Get-SoundPacks.ps1 -List -Name *portal*          # browse the registry
+.\scripts\Get-SoundPacks.ps1 -All                          # every pack (large)
+.\scripts\Get-SoundPacks.ps1 -Force                        # download everything again
+```
+
+From CMD, `scripts\get-sound-packs.cmd` takes the same arguments
+(`scripts\get-sound-packs.cmd -Name peon,glados`). The script exits with 1 if
+a pack is unknown or a download or hash check fails. Each pack is written as
+`<pack>.json` plus a `<pack>\` folder:
+
+```
+sounds/
+  peon.json
+  peon/sounds/PeonReady1.wav ...
+  glados.json
+  glados/sounds/Hello.mp3 ...
+```
+
+Re-run `cmake --preset msvc-x64` afterwards so the new packs get embedded.
+
+#### Building packs in
+
 CMake reads the packs when it configures the build: it checks every file's
 `sha256` (a mismatch stops the build), embeds the sounds and the icon, and
 compiles the pack names, categories and labels into the `.exe`. Nothing is
