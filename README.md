@@ -77,21 +77,26 @@ the C/C++ runtime.
 
 ### Embedding sounds and images
 
-Any number of `.wav` files and images (`.png`, `.jpg`, `.jpeg`, `.gif`) can be
-compiled into the executable:
+Every `.wav` file in `assets/sounds` and every image (`.png`, `.jpg`, `.jpeg`,
+`.gif`) in `assets/images` is compiled into the executable. Drop files into
+those folders and rebuild; CMake notices added or removed files on its own.
+
+To use other folders (relative paths are resolved against the repo root):
 
 ```
-cmake --preset msvc-x64 ^
-  -DTOASTER_EMBED_SOUNDS="assets/sounds/done.wav;assets/sounds/fail.wav" ^
-  -DTOASTER_EMBED_IMAGES="assets/images/logo.png"
+cmake --preset msvc-x64 -DTOASTER_SOUNDS_DIR=C:/my/sounds -DTOASTER_IMAGES_DIR=C:/my/images
 cmake --build --preset release
 ```
+
+Pass an empty value (`-DTOASTER_IMAGES_DIR=`) to embed nothing of that kind.
+Subfolders are not scanned.
 
 Each asset is referenced by its file name without the extension, lower-cased,
 with anything other than letters, digits and `_` turned into `_`
 (`Build-Done.wav` becomes `build_done`):
 
 ```
+toaster --list-embedded
 toaster -t "Build done" -s done -i logo
 ```
 

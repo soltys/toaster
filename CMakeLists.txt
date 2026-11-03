@@ -15,12 +15,15 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(EmbedAssets)
 
-# Assets compiled into the .exe. Paths are relative to the source directory.
-# Example:
-#   cmake --preset msvc-x64 -DTOASTER_EMBED_SOUNDS="assets/sounds/done.wav;assets/sounds/fail.wav"
-#                           -DTOASTER_EMBED_IMAGES="assets/images/logo.png"
-set(TOASTER_EMBED_SOUNDS "" CACHE STRING "Semicolon-separated .wav files to embed in toaster.exe")
-set(TOASTER_EMBED_IMAGES "" CACHE STRING "Semicolon-separated images (.png/.jpg/.gif) to embed in toaster.exe")
+# Every .wav in TOASTER_SOUNDS_DIR and every image in TOASTER_IMAGES_DIR is
+# compiled into the .exe. Relative paths are resolved against the source
+# directory. Adding or removing files re-runs CMake automatically.
+#   cmake --preset msvc-x64 -DTOASTER_SOUNDS_DIR=C:/my/sounds -DTOASTER_IMAGES_DIR=C:/my/images
+set(TOASTER_SOUNDS_DIR "assets/sounds" CACHE PATH "Folder whose .wav files are embedded in toaster.exe")
+set(TOASTER_IMAGES_DIR "assets/images" CACHE PATH "Folder whose .png/.jpg/.jpeg/.gif files are embedded in toaster.exe")
+
+toaster_collect_assets(TOASTER_EMBED_SOUNDS "${TOASTER_SOUNDS_DIR}" wav)
+toaster_collect_assets(TOASTER_EMBED_IMAGES "${TOASTER_IMAGES_DIR}" png jpg jpeg gif)
 
 configure_file(src/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/version.h @ONLY)
 

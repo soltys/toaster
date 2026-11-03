@@ -9,6 +9,31 @@
 # lower-cased, with characters other than [a-z0-9_] replaced by '_'.
 # Example: "Build-Done.wav" -> "build_done".
 
+# Collects files with the given extensions from a folder (not recursive).
+#   toaster_collect_assets(<out_var> <dir> <ext>...)
+# An empty <dir> yields an empty list; a missing folder is an error.
+function(toaster_collect_assets out_var dir)
+    set(files "")
+    if(NOT dir STREQUAL "")
+        get_filename_component(abs_dir "${dir}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
+        if(NOT IS_DIRECTORY "${abs_dir}")
+            message(FATAL_ERROR "Asset folder not found: ${abs_dir}")
+        endif()
+        set(patterns "")
+        foreach(ext IN LISTS ARGN)
+            list(APPEND patterns "${abs_dir}/*.${ext}")
+            string(TOUPPER "${ext}" upper)
+            list(APPEND patterns "${abs_dir}/*.${upper}")
+        endforeach()
+        file(GLOB files CONFIGURE_DEPENDS ${patterns})
+        list(REMOVE_DUPLICATES files)
+        list(SORT files)
+    endif()
+    list(LENGTH files count)
+    message(STATUS "toaster: embedding ${count} file(s) from '${dir}'")
+    set(${out_var} "${files}" PARENT_SCOPE)
+endfunction()
+
 function(_toaster_asset_name out_var file)
     get_filename_component(stem "${file}" NAME_WE)
     string(TOLOWER "${stem}" stem)
