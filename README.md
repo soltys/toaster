@@ -134,6 +134,23 @@ cmake --build --preset release
 The result is `build/msvc-x64/Release/toaster.exe`, statically linked against
 the C/C++ runtime.
 
+### Tests
+
+```
+cmake --build --preset release
+ctest --preset release
+```
+
+`unit` covers the argument parser, packs, embedded asset tables, sound format
+detection and the MP3 decoder. `e2e` runs the built `toaster.exe`: exit codes,
+error messages, `--list-*`, the embedded skill and `--install-skill` (into a
+temporary profile), without showing a toast or playing a sound. Tests that
+check the build's own assets skip themselves when it embeds none.
+
+`cmake --preset msvc-x64 -DTOASTER_TEST_UI=ON` adds a `ui` test that does show
+real toasts for a second each (exit codes 0 and 5, buttons, image styles) and
+plays a silent `.wav`. It needs a desktop session with notifications turned on.
+
 ### Embedding sounds and images
 
 Every `.wav` and `.mp3` file in `assets/sounds` and every image (`.png`, `.jpg`, `.jpeg`,
@@ -186,6 +203,45 @@ include `success`, `failure`, `warning`, `info`, `question`, `build`,
 toaster -t "Build done" -b "0 errors" -i success
 toaster -t "Deploy failed" -b "See deploy.log" -i failure
 ```
+
+#### All embedded icons
+
+The standard set, as embedded by the `msvc-x64` preset. Use the name with
+`-i`/`--image`, for example `toaster -t "Build done" -i success`. The icons are
+`docs/icons/*.png` in this repository; the Fluent Emoji licence is next to them.
+
+| Icon | Name | Use | Fluent Emoji |
+|:----:|------|-----|--------------|
+| <img src="docs/icons/success.png" width="48" alt="success"> | `success` | Task succeeded | Check mark button |
+| <img src="docs/icons/failure.png" width="48" alt="failure"> | `failure` | Task failed | Cross mark |
+| <img src="docs/icons/warning.png" width="48" alt="warning"> | `warning` | Warning | Warning |
+| <img src="docs/icons/info.png" width="48" alt="info"> | `info` | Information | Information |
+| <img src="docs/icons/question.png" width="48" alt="question"> | `question` | Input needed | Red question mark |
+| <img src="docs/icons/build.png" width="48" alt="build"> | `build` | Build | Hammer and wrench |
+| <img src="docs/icons/deploy.png" width="48" alt="deploy"> | `deploy` | Deploy / release | Rocket |
+| <img src="docs/icons/bell.png" width="48" alt="bell"> | `bell` | Generic notification | Bell |
+| <img src="docs/icons/done.png" width="48" alt="done"> | `done` | Finished (hourglass) | Hourglass done |
+| <img src="docs/icons/waiting.png" width="48" alt="waiting"> | `waiting` | Still running | Hourglass not done |
+| <img src="docs/icons/timer.png" width="48" alt="timer"> | `timer` | Timer / duration | Stopwatch |
+| <img src="docs/icons/alarm.png" width="48" alt="alarm"> | `alarm` | Reminder | Alarm clock |
+| <img src="docs/icons/celebrate.png" width="48" alt="celebrate"> | `celebrate` | Big success | Party popper |
+| <img src="docs/icons/trophy.png" width="48" alt="trophy"> | `trophy` | Achievement | Trophy |
+| <img src="docs/icons/thumbs_up.png" width="48" alt="thumbs_up"> | `thumbs_up` | Approved | Thumbs up |
+| <img src="docs/icons/thumbs_down.png" width="48" alt="thumbs_down"> | `thumbs_down` | Rejected | Thumbs down |
+| <img src="docs/icons/stop.png" width="48" alt="stop"> | `stop` | Stopped / blocked | Stop sign |
+| <img src="docs/icons/fire.png" width="48" alt="fire"> | `fire` | Incident / hot | Fire |
+| <img src="docs/icons/crash.png" width="48" alt="crash"> | `crash` | Crash | Collision |
+| <img src="docs/icons/bug.png" width="48" alt="bug"> | `bug` | Bug / test failure | Bug |
+| <img src="docs/icons/package.png" width="48" alt="package"> | `package` | Package / install | Package |
+| <img src="docs/icons/save.png" width="48" alt="save"> | `save` | Saved / backup | Floppy disk |
+| <img src="docs/icons/locked.png" width="48" alt="locked"> | `locked` |   | Security / permissions Locked |
+| <img src="docs/icons/settings.png" width="48" alt="settings"> | `settings` | Configuration | Gear |
+| <img src="docs/icons/computer.png" width="48" alt="computer"> | `computer` | Machine / system | Laptop |
+| <img src="docs/icons/idea.png" width="48" alt="idea"> | `idea` | Tip / suggestion | Light bulb |
+| <img src="docs/icons/sparkles.png" width="48" alt="sparkles"> | `sparkles` | New / something nice | Sparkles |
+| <img src="docs/icons/robot.png" width="48" alt="robot"> | `robot` | AI agent / automation | Robot |
+| <img src="docs/icons/mail.png" width="48" alt="mail"> | `mail` | Message | Envelope |
+| <img src="docs/icons/coffee.png" width="48" alt="coffee"> | `coffee` | Break / long wait | Hot beverage |
 
 ### Sound packs
 

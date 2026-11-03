@@ -112,3 +112,11 @@ target_link_libraries(toaster PRIVATE
 target_link_options(toaster PRIVATE
     $<$<NOT:$<CONFIG:Debug>>:/LTCG /OPT:REF /OPT:ICF>
 )
+
+# Tests: `ctest --preset release` after building. See tests/CMakeLists.txt.
+option(TOASTER_BUILD_TESTS "Build the test suite" ON)
+option(TOASTER_TEST_UI "Register the tests that show real toasts and play audio" OFF)
+if(TOASTER_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

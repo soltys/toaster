@@ -29,5 +29,13 @@
             "configurePreset": "msvc-x64",
             "configuration": "Release"
         }
+    ],
+    "testPresets": [
+        {
+            "name": "release",
+            "configurePreset": "msvc-x64",
+            "configuration": "Release",
+            "output": { "outputOnFailure": true }
+        }
     ]
 }
