@@ -1,0 +1,3 @@
+#pragma once
+
+#define TOASTER_VERSION L"@PROJECT_VERSION@"
