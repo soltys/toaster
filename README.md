@@ -163,6 +163,30 @@ If a file with that name exists in the current directory it is used instead.
 Windows only shows toast images from files, so embedded images are unpacked once to
 `%LOCALAPPDATA%\toaster\cache`. Embedded sounds play straight from the `.exe`.
 
+#### Downloading icons
+
+`scripts/Get-Images.ps1` downloads 30 ready-made 256x256 PNG icons from
+Microsoft's [Fluent Emoji](https://github.com/microsoft/fluentui-emoji)
+(MIT licence, the 3D style used by Windows 11) into the images folder, by
+default the `msvc-x64` preset's `C:\temp\toast_notification\images`. The
+source is pinned to one commit and every file's sha256 is checked; the licence
+is saved next to the icons as `fluentui-emoji-LICENSE.txt`.
+
+```powershell
+.\scripts\Get-Images.ps1                                   # all icons
+.\scripts\Get-Images.ps1 -Name success,failure,warning     # only these
+.\scripts\Get-Images.ps1 -List                             # names and what they are for
+```
+
+From CMD, use `scripts\get-images.cmd` with the same arguments. Icon names
+include `success`, `failure`, `warning`, `info`, `question`, `build`,
+`deploy`, `bell`, `waiting`, `done`, `bug`, `robot` and more:
+
+```
+toaster -t "Build done" -b "0 errors" -i success
+toaster -t "Deploy failed" -b "See deploy.log" -i failure
+```
+
 ### Sound packs
 
 The sounds folder can also hold sound pack descriptions: JSON files in the

@@ -70,6 +70,11 @@ Each toaster.exe can have sounds, images and sound packs compiled in. Run
 build offers, then refer to them by name (`-s done`, `-i logo`). A path to a
 real file works too.
 
+Builds made with `scripts/Get-Images.ps1` include icons named after the event:
+`success`, `failure`, `warning`, `info`, `question` (input needed), `build`,
+`deploy`, `waiting`, `done`, `bug`, `robot` and others. Match the icon to the
+event when `--list-embedded` shows it, e.g. `-i failure` for a failed build.
+
 With `--pack`, the title, body and image default to the pack's own values, so
 this is the shortest way to make a noise:
 
