@@ -1,17 +1,29 @@
 {
-  "version": 3,
-  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
-  "configurePresets": [
-    {
-      "name": "msvc-x64",
-      "displayName": "MSVC x64 (Visual Studio 2022)",
-      "generator": "Visual Studio 17 2022",
-      "architecture": "x64",
-      "binaryDir": "${sourceDir}/build/${presetName}"
-    }
-  ],
-  "buildPresets": [
-    { "name": "debug", "configurePreset": "msvc-x64", "configuration": "Debug" },
-    { "name": "release", "configurePreset": "msvc-x64", "configuration": "Release" }
-  ]
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "msvc-x64",
+            "displayName": "MSVC x64 (Visual Studio 2026)",
+            "generator": "Visual Studio 18 2026",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/${presetName}"
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "configurePreset": "msvc-x64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "release",
+            "configurePreset": "msvc-x64",
+            "configuration": "Release"
+        }
+    ]
 }
