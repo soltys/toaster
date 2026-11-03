@@ -4,9 +4,12 @@ namespace toaster {
 
 // Process exit codes. Scripts depend on these values, so never renumber them.
 enum class ExitCode : int {
-    Ok = 0,
-    UsageError = 1,  // bad command line
-    Failure = 2,     // runtime error (asset missing, Windows API failure, ...)
+    Ok = 0,          // toast shown; with --wait: the user clicked it
+    UsageError = 1,  // bad command line, or the image/sound could not be found
+    Failure = 2,     // Windows refused or failed to show the toast
+    Dismissed = 3,   // --wait: the user closed the toast
+    Expired = 4,     // --wait: the toast left the screen on its own
+    TimedOut = 5,    // --wait --timeout: time ran out, the toast was removed
 };
 
 } // namespace toaster

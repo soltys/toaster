@@ -13,6 +13,7 @@ struct Options {
     std::wstring title;
     std::wstring body;
     std::wstring image;   // image file path, or the name of an embedded image
+    std::wstring imageStyle = L"logo"; // logo | inline | hero
     std::wstring sound;   // .wav file path, or the name of an embedded sound
     bool wait = false;    // block until the toast is dismissed or activated
     std::optional<std::uint32_t> timeoutSeconds; // only meaningful with --wait

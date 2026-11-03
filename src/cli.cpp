@@ -5,7 +5,7 @@
 namespace toaster::cli {
 namespace {
 
-enum class Id { Title, Body, Image, Sound, Wait, Timeout, ListEmbedded, Help, Version };
+enum class Id { Title, Body, Image, ImageStyle, Sound, Wait, Timeout, ListEmbedded, Help, Version };
 
 struct OptionSpec {
     Id id;
@@ -18,6 +18,7 @@ constexpr std::array kSpecs{
     OptionSpec{Id::Title,   L't',  L"title",   true},
     OptionSpec{Id::Body,    L'b',  L"body",    true},
     OptionSpec{Id::Image,   L'i',  L"image",   true},
+    OptionSpec{Id::ImageStyle, L'\0', L"image-style", true},
     OptionSpec{Id::Sound,   L's',  L"sound",   true},
     OptionSpec{Id::Wait,    L'w',  L"wait",    false},
     OptionSpec{Id::Timeout, L'\0', L"timeout", true},
@@ -75,6 +76,13 @@ std::optional<std::wstring> apply(Options& options, const OptionSpec& spec, std:
     case Id::Title:   options.title.assign(value); break;
     case Id::Body:    options.body.assign(value);  break;
     case Id::Image:   options.image.assign(value); break;
+    case Id::ImageStyle:
+        if (value != L"logo" && value != L"inline" && value != L"hero") {
+            return L"invalid value for --image-style: '" + std::wstring(value) +
+                   L"' (expected logo, inline or hero)";
+        }
+        options.imageStyle.assign(value);
+        break;
     case Id::Sound:   options.sound.assign(value); break;
     case Id::Wait:    options.wait = true;         break;
     case Id::Help:    options.help = true;         break;
@@ -163,6 +171,7 @@ std::wstring usage() {
         L"  -t, --title <text>        Toast title (required)\n"
         L"  -b, --body <text>         Toast body text\n"
         L"  -i, --image <path|name>   Image shown in the toast (file or embedded name)\n"
+        L"      --image-style <style> logo (default), inline or hero\n"
         L"  -s, --sound <path|name>   .wav played when the toast is shown (file or embedded name)\n"
         L"  -w, --wait                Wait until the toast is dismissed or clicked\n"
         L"      --timeout <sec>       With --wait: give up after this many seconds\n"
@@ -172,6 +181,11 @@ std::wstring usage() {
         L"\n"
         L"Values can also be given as --name=value. For --sound and --image an\n"
         L"existing file wins; otherwise the value is looked up among embedded assets.\n"
+        L"\n"
+        L"Exit codes:\n"
+        L"  0  shown (with --wait: clicked)    3  --wait: closed by the user\n"
+        L"  1  bad arguments or missing file   4  --wait: expired to Action Center\n"
+        L"  2  Windows failed to show it       5  --wait: --timeout elapsed\n"
         L"\n"
         L"Example:\n"
         L"  toaster -t \"Build done\" -b \"All green\" -i logo.png -s done.wav --wait\n";

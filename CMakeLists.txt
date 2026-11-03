@@ -29,6 +29,9 @@ add_executable(toaster
     src/cli.cpp
     src/console.cpp
     src/embedded.cpp
+    src/app_id.cpp
+    src/toast.cpp
+    src/sound.cpp
 )
 
 toaster_embed_assets(toaster
@@ -61,7 +64,15 @@ target_compile_options(toaster PRIVATE
     /EHsc
     /Zc:__cplusplus
     /MP
+    /bigobj
     $<$<NOT:$<CONFIG:Debug>>:/O2 /GL /Gy>
+)
+
+# Only Windows system import libraries; nothing extra ships next to the .exe.
+target_link_libraries(toaster PRIVATE
+    WindowsApp   # C++/WinRT / Windows Runtime
+    winmm        # PlaySound
+    shlwapi      # UrlCreateFromPath
 )
 
 target_link_options(toaster PRIVATE
