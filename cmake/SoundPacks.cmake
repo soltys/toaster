@@ -2,13 +2,15 @@
 # a folder at configure time, verifies them and turns them into C++ tables,
 # so toaster.exe never has to parse JSON at runtime.
 #
-#   toaster_load_sound_packs(<dir> <out_sounds> <out_images> <header_file>)
+#   toaster_load_sound_packs(<dir> <out_sounds> <out_images> <header_file> [<icon_dir>...])
 #
 # For every <dir>/*.json:
-#   - each "categories.<category>.sounds[].file" (relative to the JSON file)
-#     is checked against its "sha256" and embedded as sound "<pack>_<stem>";
-#   - the optional "icon" (relative to the JSON file) is embedded as image
-#     "<pack>_icon";
+#   - each "categories.<category>.sounds[].file" is checked against its
+#     "sha256" and embedded as sound "<pack>_<stem>";
+#   - the optional "icon" is embedded as image "<pack>_icon";
+#   - files are looked up relative to the JSON file, then by file name in the
+#     JSON folder, in <folder>/<pack>/, and (icons only) in extra folders;
+#     missing files are skipped with a warning;
 #   - name, display_name, categories and labels go into <header_file>.
 # <out_sounds> / <out_images> receive "<name>|<path>" items for
 # toaster_embed_assets().
@@ -27,7 +29,31 @@ function(_toaster_sanitize out_var value)
     set(${out_var} "${value}" PARENT_SCOPE)
 endfunction()
 
+# Finds a file referenced by a pack. Tries, in order: the path relative to the
+# JSON file, then just the file name in the JSON folder, in <folder>/<pack>/,
+# and in any extra folders (e.g. the images folder for icons).
+function(_toaster_find_pack_file out_var pack_dir pack file)
+    get_filename_component(file_name "${file}" NAME)
+    set(candidates
+        "${pack_dir}/${file}"
+        "${pack_dir}/${file_name}"
+        "${pack_dir}/${pack}/${file}"
+        "${pack_dir}/${pack}/${file_name}")
+    foreach(extra IN LISTS ARGN)
+        list(APPEND candidates "${extra}/${file_name}")
+    endforeach()
+    foreach(candidate IN LISTS candidates)
+        get_filename_component(candidate "${candidate}" ABSOLUTE)
+        if(EXISTS "${candidate}" AND NOT IS_DIRECTORY "${candidate}")
+            set(${out_var} "${candidate}" PARENT_SCOPE)
+            return()
+        endif()
+    endforeach()
+    set(${out_var} "" PARENT_SCOPE)
+endfunction()
+
 function(toaster_load_sound_packs dir out_sounds out_images header_file)
+    set(extra_icon_dirs ${ARGN}) # optional folders also searched for icons
     set(sounds "")
     set(images "")
     set(tables "")
@@ -68,12 +94,12 @@ function(toaster_load_sound_packs dir out_sounds out_images header_file)
         set(icon_asset "")
         string(JSON icon ERROR_VARIABLE err GET "${json}" icon)
         if(NOT err AND NOT icon STREQUAL "")
-            get_filename_component(icon_path "${icon}" ABSOLUTE BASE_DIR "${pack_dir}")
-            if(EXISTS "${icon_path}")
+            _toaster_find_pack_file(icon_path "${pack_dir}" "${pack}" "${icon}" ${extra_icon_dirs})
+            if(icon_path)
                 set(icon_asset "${pack}_icon")
                 list(APPEND images "${icon_asset}|${icon_path}")
             else()
-                message(WARNING "Sound pack '${pack}': icon not found: ${icon_path}")
+                message(WARNING "Sound pack '${pack}': icon '${icon}' not found next to ${json_file}")
             endif()
         endif()
 
@@ -103,9 +129,10 @@ function(toaster_load_sound_packs dir out_sounds out_images header_file)
                     endif()
                     string(JSON expected_hash ERROR_VARIABLE hash_err GET "${json}" categories "${category}" sounds ${i} sha256)
 
-                    get_filename_component(sound_path "${file}" ABSOLUTE BASE_DIR "${pack_dir}")
-                    if(NOT EXISTS "${sound_path}")
-                        message(FATAL_ERROR "Sound pack '${pack}': file not found: ${sound_path}")
+                    _toaster_find_pack_file(sound_path "${pack_dir}" "${pack}" "${file}")
+                    if(NOT sound_path)
+                        message(WARNING "Sound pack '${pack}': '${file}' not found next to ${json_file}; skipped")
+                        continue()
                     endif()
                     if(NOT hash_err AND NOT expected_hash STREQUAL "")
                         file(SHA256 "${sound_path}" actual_hash)
@@ -130,6 +157,9 @@ function(toaster_load_sound_packs dir out_sounds out_images header_file)
                     math(EXPR sound_total "${sound_total} + 1")
                 endforeach()
 
+                if(sound_entries STREQUAL "")
+                    continue()
+                endif()
                 set(table "kPack${pack_index}Category${c}")
                 string(APPEND tables "inline constexpr PackSound ${table}[] = {\n${sound_entries}};\n")
                 _toaster_cpp_string(category_literal "${category}")

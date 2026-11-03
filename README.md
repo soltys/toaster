@@ -113,7 +113,9 @@ from files, so embedded images and `.mp3` sounds are unpacked once to
 The sounds folder can also hold sound pack descriptions: JSON files in the
 CESP format (`"cesp_version": "1.0"`), for example `peon.json` or
 `glados.json`. Paths inside a pack (`categories.<name>.sounds[].file` and the
-optional `icon`) are relative to the JSON file:
+optional `icon`) are looked up relative to the JSON file, then by file name in
+the JSON folder, in a `<pack>/` subfolder, and (icons only) in the images folder.
+Missing files are skipped with a warning. Typical layout:
 
 ```
 sounds/
