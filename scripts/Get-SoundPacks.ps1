@@ -36,6 +36,14 @@
 .PARAMETER Registry
     URL of the registry index.json.
 
+.PARAMETER Ref
+    Git branch or tag to download the packs from instead of the registry's
+    pinned source_ref, e.g. -Ref main for the newest version of a pack. The
+    registry can lag behind: peon is pinned to v1.0.0 there, while main has
+    1.1.0 (which adds PeonWorkComplete.wav). The manifest hash from the registry
+    is not checked then, but every sound is still checked against the sha256
+    in the downloaded manifest.
+
 .PARAMETER Force
     Download every file again even when it is already present and valid.
 
@@ -45,6 +53,10 @@
 
 .EXAMPLE
     .\scripts\Get-SoundPacks.ps1 -Name peon,aoe2 -Destination D:\toaster\sounds
+
+.EXAMPLE
+    .\scripts\Get-SoundPacks.ps1 -Name peon -Ref main
+    Downloads the newest peon pack from its repository instead of the registry's pinned version.
 
 .EXAMPLE
     .\scripts\Get-SoundPacks.ps1 -List -Name *portal*
@@ -64,6 +76,8 @@ param(
     [string] $Destination = 'C:\temp\toast_notification\sounds',
 
     [string] $Registry = 'https://raw.githubusercontent.com/PeonPing/registry/main/index.json',
+
+    [string] $Ref,
 
     [switch] $Force
 )
@@ -137,6 +151,11 @@ function Save-Url([string] $Url, [string] $Path, [string] $Sha256) {
 function Install-Pack($Entry) {
     $repo = Get-Property $Entry 'source_repo'
     $ref = Get-Property $Entry 'source_ref'
+    $manifestSha = Get-Property $Entry 'manifest_sha256'
+    if ($Ref) {
+        $ref = $Ref
+        $manifestSha = $null # the registry's hash is for its pinned ref only
+    }
     $path = Get-Property $Entry 'source_path'
     if (-not $repo -or -not $ref) { throw "registry entry has no source_repo/source_ref" }
 
@@ -148,7 +167,7 @@ function Install-Pack($Entry) {
 
     # Manifest first: it lists the files and their hashes.
     $manifestTmp = Join-Path $Destination ".$($Entry.name).openpeon.json.download"
-    Save-Url (Join-Url $base 'openpeon.json') $manifestTmp (Get-Property $Entry 'manifest_sha256')
+    Save-Url (Join-Url $base 'openpeon.json') $manifestTmp $manifestSha
     try {
         $manifest = Read-JsonFile $manifestTmp
         $packName = Get-Property $manifest 'name'
@@ -200,7 +219,8 @@ function Install-Pack($Entry) {
         # Written last, so a pack only shows up for CMake once all its files are in place.
         Move-Item -LiteralPath $manifestTmp -Destination (Join-Path $Destination "$folderName.json") -Force
         $display = Get-Property $manifest 'display_name'
-        Write-Host ("{0} ({1}): {2} downloaded, {3} already up to date" -f $packName, $display, $downloaded, $kept)
+        $version = Get-Property $manifest 'version'
+        Write-Host ("{0} ({1}) {2} from {3}: {4} downloaded, {5} already up to date" -f $packName, $display, $version, $ref, $downloaded, $kept)
     }
     finally {
         if (Test-Path -LiteralPath $manifestTmp) { Remove-Item -LiteralPath $manifestTmp -Force }
