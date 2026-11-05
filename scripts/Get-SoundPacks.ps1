@@ -37,12 +37,20 @@
     URL of the registry index.json.
 
 .PARAMETER Ref
-    Git branch or tag to download the packs from instead of the registry's
-    pinned source_ref, e.g. -Ref main for the newest version of a pack. The
-    registry can lag behind: peon is pinned to v1.0.0 there, while main has
-    1.1.0 (which adds PeonWorkComplete.wav). The manifest hash from the registry
-    is not checked then, but every sound is still checked against the sha256
-    in the downloaded manifest.
+    Git branch or tag to download every selected pack from, instead of the
+    default ref.
+
+    Default: packs from PeonPing/og-packs (peon, glados, ...) come from its
+    main branch, because the registry pin lags behind (peon is pinned to v1.0.0
+    there, while main has 1.1.0 with PeonWorkComplete.wav). Packs from other
+    repositories use the registry's pinned source_ref.
+
+    When the ref differs from the registry's pin, the registry's manifest hash
+    is not checked, but every sound is still checked against the sha256 in the
+    downloaded manifest.
+
+.PARAMETER Pinned
+    Use the registry's pinned source_ref for every pack, including og-packs.
 
 .PARAMETER Force
     Download every file again even when it is already present and valid.
@@ -55,8 +63,8 @@
     .\scripts\Get-SoundPacks.ps1 -Name peon,aoe2 -Destination D:\toaster\sounds
 
 .EXAMPLE
-    .\scripts\Get-SoundPacks.ps1 -Name peon -Ref main
-    Downloads the newest peon pack from its repository instead of the registry's pinned version.
+    .\scripts\Get-SoundPacks.ps1 -Name peon -Pinned
+    Downloads the version of peon that the registry pins (v1.0.0) instead of og-packs main.
 
 .EXAMPLE
     .\scripts\Get-SoundPacks.ps1 -List -Name *portal*
@@ -78,6 +86,8 @@ param(
     [string] $Registry = 'https://raw.githubusercontent.com/PeonPing/registry/main/index.json',
 
     [string] $Ref,
+
+    [switch] $Pinned,
 
     [switch] $Force
 )
@@ -152,8 +162,9 @@ function Install-Pack($Entry) {
     $repo = Get-Property $Entry 'source_repo'
     $ref = Get-Property $Entry 'source_ref'
     $manifestSha = Get-Property $Entry 'manifest_sha256'
-    if ($Ref) {
-        $ref = $Ref
+    $wanted = if ($Ref) { $Ref } elseif (-not $Pinned -and $repo -eq 'PeonPing/og-packs') { 'main' } else { $null }
+    if ($wanted -and $wanted -ne $ref) {
+        $ref = $wanted
         $manifestSha = $null # the registry's hash is for its pinned ref only
     }
     $path = Get-Property $Entry 'source_path'
