@@ -154,6 +154,17 @@ TEST(packs, category_names_lists_every_category) {
     }
 }
 
+TEST(packs, category_lines_lists_one_category_per_line) {
+    requirePacks();
+    for (const auto& pack : packs::kPacks) {
+        std::wstring expected;
+        for (const auto& category : pack.categories) {
+            expected += std::wstring(category.name) + L"\n";
+        }
+        CHECK_EQ(packs::categoryLines(pack), expected);
+    }
+}
+
 TEST(packs, describe_lists_packs_categories_and_sounds) {
     const std::wstring text = packs::describe();
     if (packs::kPacks.empty()) {

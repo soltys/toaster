@@ -181,6 +181,26 @@ TEST(e2e, unknown_category_lists_the_available_ones) {
     CHECK_CONTAINS(result.err, ref->category);
 }
 
+TEST(e2e, list_categories_of_a_pack) {
+    const auto ref = firstPack();
+    if (!ref) {
+        SKIP("this build embeds no sound packs");
+    }
+    const auto result = runToaster({L"--pack", ref->pack, L"--list-categories"});
+    CHECK_EQ(result.exitCode, 0);
+    CHECK(result.err.empty());
+    CHECK_CONTAINS(result.out, ref->category + L"\n");
+}
+
+TEST(e2e, list_categories_of_an_unknown_pack_is_reported) {
+    expectUsageError(runToaster({L"-p", L"no_such_pack", L"--list-categories"}),
+                     L"unknown sound pack: 'no_such_pack'");
+}
+
+TEST(e2e, list_categories_needs_a_pack) {
+    expectUsageError(runToaster({L"--list-categories"}), L"--list-categories needs --pack");
+}
+
 TEST(e2e, pack_name_is_case_insensitive) {
     const auto ref = firstPack();
     if (!ref) {

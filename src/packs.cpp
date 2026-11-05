@@ -53,6 +53,15 @@ std::wstring categoryNames(const SoundPack& pack) {
     return names;
 }
 
+std::wstring categoryLines(const SoundPack& pack) {
+    std::wstring lines;
+    for (const auto& category : pack.categories) {
+        lines += category.name;
+        lines += L'\n';
+    }
+    return lines;
+}
+
 std::wstring describe() {
     if (kPacks.empty()) {
         return L"No sound packs are embedded.\n";

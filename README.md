@@ -28,6 +28,7 @@ toaster -t "Build done" -b "All green" -i logo.png -s done.wav --wait
 |       | `--timeout <sec>` | With `--wait`: give up after this many seconds            |
 |       | `--list-embedded` | List sounds and images compiled into the `.exe`           |
 |       | `--list-packs`    | List embedded sound packs, their categories and sounds    |
+|       | `--list-categories` | With `--pack`: list that pack's categories, one per line |
 |       | `--install-skill` | Install the `toaster` AI agent skill (interactive wizard) |
 |       | `--skill-target <list>` | With `--install-skill`: `all` or `claude,codex,copilot,vscode,vs`, no questions |
 |       | `--print-skill`   | Print the embedded `SKILL.md`                             |
@@ -304,6 +305,7 @@ parsed at runtime.
 
 ```
 toaster --list-packs
+toaster --pack peon --list-categories
 toaster --pack peon --category task.complete
 toaster --pack glados -c task.error -t "Build failed" --wait
 ```

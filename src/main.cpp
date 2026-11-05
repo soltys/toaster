@@ -193,6 +193,15 @@ int run(const toaster::cli::Options& options) {
         toaster::console::out(toaster::packs::describe());
         return toInt(ExitCode::Ok);
     }
+    if (options.listCategories) {
+        const toaster::packs::SoundPack* pack = toaster::packs::find(options.pack);
+        if (!pack) {
+            toaster::console::err(L"toaster: unknown sound pack: '" + options.pack + L"' (see --list-packs)\n");
+            return toInt(ExitCode::UsageError);
+        }
+        toaster::console::out(toaster::packs::categoryLines(*pack));
+        return toInt(ExitCode::Ok);
+    }
 
     try {
         return notify(options);

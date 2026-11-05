@@ -19,6 +19,9 @@ namespace toaster::packs {
 // Comma-separated category names, for error messages.
 [[nodiscard]] std::wstring categoryNames(const SoundPack& pack);
 
+// Category names of one pack, one per line (for --list-categories).
+[[nodiscard]] std::wstring categoryLines(const SoundPack& pack);
+
 // Human-readable list of packs, categories and sound labels.
 [[nodiscard]] std::wstring describe();
 

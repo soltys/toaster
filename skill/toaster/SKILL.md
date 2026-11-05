@@ -50,6 +50,7 @@ toaster -t "Need your input" -b "Which database should I migrate?" -i question -
 |       | `--timeout <sec>`       | With `--wait`: give up after this many seconds |
 |       | `--list-embedded`       | List sounds and images built into this toaster.exe |
 |       | `--list-packs`          | List built-in sound packs and their categories |
+|       | `--list-categories`     | With `--pack`: list that pack's categories, one per line |
 | `-h`  | `--help`                | Full help |
 
 Values can also be written as `--title=value`. Always quote text that contains

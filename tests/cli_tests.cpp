@@ -122,6 +122,7 @@ TEST(cli, help_and_version_in_every_spelling) {
 TEST(cli, information_options_need_no_toast) {
     CHECK(options(parseArgs({L"--list-embedded"})).listEmbedded);
     CHECK(options(parseArgs({L"--list-packs"})).listPacks);
+    CHECK(options(parseArgs({L"--list-categories", L"--pack", L"peon"})).listCategories);
     CHECK(options(parseArgs({L"--print-skill"})).printSkill);
     CHECK(options(parseArgs({L"--install-skill"})).installSkill);
 }
@@ -129,6 +130,13 @@ TEST(cli, information_options_need_no_toast) {
 TEST(cli, information_options_skip_the_other_checks) {
     // --button without --wait is an error for a toast, but not next to --help.
     CHECK(options(parseArgs({L"--help", L"--button", L"x"})).help);
+}
+
+TEST(cli, list_categories_needs_a_pack) {
+    expectError({L"--list-categories"}, L"--list-categories needs --pack");
+    const auto result = parseArgs({L"-p", L"peon", L"--list-categories"});
+    CHECK(options(result).listCategories);
+    CHECK_EQ(options(result).pack, L"peon");
 }
 
 TEST(cli, skill_target) {
@@ -261,7 +269,7 @@ TEST(cli, usage_documents_every_option) {
     const std::wstring text = usage();
     for (const wchar_t* option : {L"--title", L"--body", L"--image", L"--image-style", L"--sound", L"--pack",
                                   L"--category", L"--button", L"--wait", L"--timeout", L"--list-embedded",
-                                  L"--list-packs", L"--install-skill", L"--skill-target", L"--print-skill",
+                                  L"--list-packs", L"--list-categories", L"--install-skill", L"--skill-target", L"--print-skill",
                                   L"--help", L"--version"}) {
         CHECK_CONTAINS(text, option);
     }

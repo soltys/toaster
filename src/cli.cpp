@@ -8,6 +8,7 @@ namespace {
 constexpr std::size_t kMaxButtons = 5; // Windows limit for toast action buttons
 
 enum class Id { Title, Body, Image, ImageStyle, Sound, Pack, Category, Button, Wait, Timeout, ListEmbedded, ListPacks,
+                ListCategories,
                 InstallSkill, SkillTarget, PrintSkill, Help, Version };
 
 struct OptionSpec {
@@ -30,6 +31,7 @@ constexpr std::array kSpecs{
     OptionSpec{Id::Timeout, L'\0', L"timeout", true},
     OptionSpec{Id::ListEmbedded, L'\0', L"list-embedded", false},
     OptionSpec{Id::ListPacks, L'\0', L"list-packs", false},
+    OptionSpec{Id::ListCategories, L'\0', L"list-categories", false},
     OptionSpec{Id::InstallSkill, L'\0', L"install-skill", false},
     OptionSpec{Id::SkillTarget, L'\0', L"skill-target", true},
     OptionSpec{Id::PrintSkill, L'\0', L"print-skill", false},
@@ -106,6 +108,7 @@ std::optional<std::wstring> apply(Options& options, const OptionSpec& spec, std:
         options.buttons.emplace_back(value);
         break;
     case Id::ListPacks: options.listPacks = true;      break;
+    case Id::ListCategories: options.listCategories = true; break;
     case Id::InstallSkill: options.installSkill = true; break;
     case Id::SkillTarget:
         if (value.empty()) {
@@ -180,7 +183,10 @@ ParseResult parse(std::span<const std::wstring_view> args) {
     if (!options.skillTarget.empty() && !options.installSkill) {
         return ParseError{L"--skill-target can only be used together with --install-skill"};
     }
-    if (options.help || options.version || options.listEmbedded || options.listPacks ||
+    if (options.listCategories && !options.help && !options.version && options.pack.empty()) {
+        return ParseError{L"--list-categories needs --pack (-p), e.g. --list-categories --pack peon; see --list-packs"};
+    }
+    if (options.help || options.version || options.listEmbedded || options.listPacks || options.listCategories ||
         options.installSkill || options.printSkill) {
         return options;
     }
@@ -239,6 +245,7 @@ std::wstring usage() {
         L"      --timeout <sec>       With --wait: give up after this many seconds\n"
         L"      --list-embedded       List sounds and images compiled into this .exe\n"
         L"      --list-packs          List embedded sound packs, categories and sounds\n"
+        L"      --list-categories     With --pack: list that pack's categories, one per line\n"
         L"      --install-skill       Install the 'toaster' AI agent skill (asks where)\n"
         L"      --skill-target <list> With --install-skill: all, or any of claude, codex,\n"
         L"                            copilot, vscode, vs (comma-separated); no questions\n"
@@ -264,6 +271,7 @@ std::wstring usage() {
         L"  toaster -t \"Build done\" -b \"All green\" -i logo.png -s done.wav --wait\n"
         L"  toaster -t \"Deploy?\" -B Yes -B No --wait   (11 = Yes, 12 = No, 3 = closed)\n"
         L"  toaster --pack peon --category task.complete\n"
+        L"  toaster --pack peon --list-categories\n"
         L"  toaster --install-skill\n";
 }
 
