@@ -176,17 +176,17 @@ function Remove-DuplicateManifest([string] $FolderName) {
 
 function Install-Pack($Entry) {
     $repo = Get-Property $Entry 'source_repo'
-    $ref = Get-Property $Entry 'source_ref'
+    $sourceRef = Get-Property $Entry 'source_ref'
     $manifestSha = Get-Property $Entry 'manifest_sha256'
     $wanted = if ($Ref) { $Ref } elseif (-not $Pinned -and $repo -eq 'PeonPing/og-packs') { 'main' } else { $null }
-    if ($wanted -and $wanted -ne $ref) {
-        $ref = $wanted
+    if ($wanted -and $wanted -ne $sourceRef) {
+        $sourceRef = $wanted
         $manifestSha = $null # the registry's hash is for its pinned ref only
     }
     $path = Get-Property $Entry 'source_path'
-    if (-not $repo -or -not $ref) { throw "registry entry has no source_repo/source_ref" }
+    if (-not $repo -or -not $sourceRef) { throw "registry entry has no source_repo/source_ref" }
 
-    $base = "https://raw.githubusercontent.com/$repo/$([Uri]::EscapeDataString($ref))"
+    $base = "https://raw.githubusercontent.com/$repo/$([Uri]::EscapeDataString($sourceRef))"
     if ($path -and $path -ne '.') {
         if (-not (Test-SafeRelativePath $path)) { throw "unsafe source_path '$path'" }
         $base = Join-Url $base $path
@@ -248,7 +248,7 @@ function Install-Pack($Entry) {
         Move-Item -LiteralPath $manifestTmp -Destination (Join-Path $Destination "$folderName.json") -Force
         $display = Get-Property $manifest 'display_name'
         $version = Get-Property $manifest 'version'
-        Write-Host ("{0} ({1}) {2} from {3}: {4} downloaded, {5} already up to date" -f $packName, $display, $version, $ref, $downloaded, $kept)
+        Write-Host ("{0} ({1}) {2} from {3}: {4} downloaded, {5} already up to date" -f $packName, $display, $version, $sourceRef, $downloaded, $kept)
     }
     finally {
         if (Test-Path -LiteralPath $manifestTmp) { Remove-Item -LiteralPath $manifestTmp -Force }
