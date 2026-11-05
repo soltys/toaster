@@ -158,6 +158,22 @@ function Save-Url([string] $Url, [string] $Path, [string] $Sha256) {
     }
 }
 
+# CMake embeds every *.json in the sounds folder and stops on two manifests with
+# the same pack name. Renames other manifests of this pack (e.g. a hand-copied
+# jp2.json next to jan_pawel_2.json) to *.json.old so they are ignored.
+function Remove-DuplicateManifest([string] $FolderName) {
+    $keep = "$FolderName.json"
+    foreach ($file in Get-ChildItem -LiteralPath $Destination -Filter '*.json' -File) {
+        if ($file.Name -ieq $keep) { continue }
+        try { $other = Get-Property (Read-JsonFile $file.FullName) 'name' } catch { continue }
+        if ($other -and (ConvertTo-PackFolder $other) -eq $FolderName) {
+            $old = "$($file.FullName).old"
+            Move-Item -LiteralPath $file.FullName -Destination $old -Force
+            Write-Warning "$($file.Name) is another copy of pack '$other'; renamed it to $(Split-Path -Leaf $old) so CMake ignores it"
+        }
+    }
+}
+
 function Install-Pack($Entry) {
     $repo = Get-Property $Entry 'source_repo'
     $ref = Get-Property $Entry 'source_ref'
@@ -228,6 +244,7 @@ function Install-Pack($Entry) {
         }
 
         # Written last, so a pack only shows up for CMake once all its files are in place.
+        Remove-DuplicateManifest $folderName
         Move-Item -LiteralPath $manifestTmp -Destination (Join-Path $Destination "$folderName.json") -Force
         $display = Get-Property $manifest 'display_name'
         $version = Get-Property $manifest 'version'
