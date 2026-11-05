@@ -71,3 +71,6 @@ Testing/
 .vs/
 out/
 CMakeUserPresets.json
+
+# Release output (scripts/New-Release.ps1)
+dist/

@@ -152,6 +152,25 @@ check the build's own assets skip themselves when it embeds none.
 real toasts for a second each (exit codes 0 and 5, buttons, image styles) and
 plays a silent `.wav`. It needs a desktop session with notifications turned on.
 
+### Releasing
+
+From a Developer PowerShell for VS, with the [GitHub CLI](https://cli.github.com/)
+signed in (`gh auth login`):
+
+```
+.\scripts\New-Release.ps1             # build, test, tag v<version>, publish
+.\scripts\New-Release.ps1 -Draft      # same, as a draft release
+.\scripts\New-Release.ps1 -LocalOnly  # only build the files into dist\
+```
+
+The version comes from `project(toaster VERSION ...)` in `CMakeLists.txt`. The
+script refuses to run unless the tree is clean, you are on `main`, `main`
+matches `origin/main` and the tag does not exist yet. It builds Release, runs
+the tests, checks `toaster --version`, and uploads
+`toaster-<version>-win-x64.zip` (exe, README, LICENSE), `toaster.exe` and
+`SHA256SUMS.txt`. Whatever sounds, images and packs are in the preset's folders
+get embedded, so run the download scripts first.
+
 ### Embedding sounds and images
 
 Every `.wav` and `.mp3` file in `assets/sounds` and every image (`.png`, `.jpg`, `.jpeg`,
@@ -196,7 +215,7 @@ is saved next to the icons as `fluentui-emoji-LICENSE.txt`.
 .\scripts\Get-Images.ps1 -List                             # names and what they are for
 ```
 
-From CMD, use `scripts\get-images.cmd` with the same arguments. Icon names
+Icon names
 include `success`, `failure`, `warning`, `info`, `question`, `build`,
 `deploy`, `bell`, `waiting`, `done`, `bug`, `robot` and more:
 
@@ -281,8 +300,7 @@ valid. The script works in Windows PowerShell 5.1 and PowerShell 7.
 .\scripts\Get-SoundPacks.ps1 -Force                        # download everything again
 ```
 
-From CMD, `scripts\get-sound-packs.cmd` takes the same arguments
-(`scripts\get-sound-packs.cmd -Name peon,glados`). The script exits with 1 if
+The script exits with 1 if
 a pack is unknown or a download or hash check fails. Each pack is written as
 `<pack>.json` plus a `<pack>\` folder:
 
